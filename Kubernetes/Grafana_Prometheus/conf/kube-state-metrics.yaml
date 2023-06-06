@@ -1,0 +1,17 @@
+template_path: Prometheus-EKS/Kube-State-Metrics/kube-state-metrics.yaml
+environment: dev
+namespace: kube-system
+
+ksm_labels: {
+  app.kubernetes.io/component: exporter,
+  app.kubernetes.io/name: kube-state-metrics,
+  app.kubernetes.io/version: kube-state-metrics
+}
+
+cluster_roles:
+  - ksm_cluster_role_binding_metadata_name: kube-state-metrics-crb
+    ksm_cluster_role_metadata_name: kube-state-metrics-cr
+    ksm_service_account_metadata_name: kube-state-metrics-sa
+
+ksm_cluster_role_file_path:
+  - Prometheus-EKS/Kube-State-Metrics/configuration/ksm_cluster_role.yaml

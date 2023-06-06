@@ -1,0 +1,19 @@
+template_path: API-Gateway/api_gateway.tf
+
+paths:
+  - path_name: /path1
+    method: get
+    integration_key: x-amazon-apigateway-integration
+    httpMethod: GET
+    payloadFormatVersion: 1.0
+    type: HTTP_PROXY
+    uri: https://ip-ranges.amazonaws.com/ip-ranges.json
+  - path_name: /path2
+    method: get
+    integration_key: x-amazon-apigateway-integration
+    httpMethod: GET
+    payloadFormatVersion: 1.0
+    type: HTTP_PROXY
+    uri: https://ip-ranges.amazonaws.com/ip-ranges.json
+
+endpoint_configuration: REGIONAL

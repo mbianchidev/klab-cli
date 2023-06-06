@@ -1,0 +1,21 @@
+template_path: Prometheus-EKS/Alertmanager/alert-manager.yaml
+environment: dev
+namespace: 
+volumes: false
+am_efs_sc_fileSystemId:
+
+am_conf_file_path: Prometheus-EKS/Alertmanager/configuration/config.yml
+
+email_reciever:
+email_sender:
+email_sender_smarthost:
+email_sender_username:
+email_sender_identitiy:
+email_sender_password:
+
+am_labels: {
+  app: alertmanager
+}
+
+am_efs_pvc_accessModes: 
+  - ReadWriteMany

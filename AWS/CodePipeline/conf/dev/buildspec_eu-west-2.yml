@@ -1,0 +1,39 @@
+version: 0.2
+env:
+  variables:
+    TERRAFORM_VERSION: 1.4.6
+  exported-variables:
+    - build_id
+    - build_tag
+    - pipeline_region
+
+phases:
+  install:
+    commands:
+      - echo "Installing terraform..."
+      - cd /usr/bin
+      - curl -O https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+      - unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+      - terraform --version
+      - echo "Completed installing terraform..."
+
+  build:
+    commands:
+      - export pipeline_region=$AWS_REGION
+      - cd "${CODEBUILD_SRC_DIR}"
+      - cd Modules/Terraform/templates/CodePipeline
+      - echo "terraform init"
+      - terraform init
+      - terraform fmt
+      - terraform validate -no-color
+      - echo "terraform plan -out=tfplan"
+      - terraform plan -out=tfplan -compact-warnings
+      - terraform apply -auto-approve
+
+
+  post_build:
+    commands:
+      - echo "[Post Build]:Completed terraform plan..."
+artifacts:
+  files:
+    - '**/*'

@@ -1,0 +1,37 @@
+template_path: Grafana/grafana.yaml
+
+volumes: false
+volume_size: ""
+grafana_image: image
+environment: dev
+namespace:
+enable_predefined_dashboards: false
+volumes: false
+
+# Grafana Data Sources ConfigMap Variables
+grafana_datasources: 
+  - Grafana/datasources/prometheus.yaml
+
+# Grafana Dashboard Provider Variables
+grafana_dashboard_providers: 
+  - Grafana/dashboards/providers/k8s-prometheus.yaml
+
+# Grafana Dashboard Definition Variables
+grafana_dashboard_definitions: 
+  - Grafana/dashboards/definitions/kubelab-k8s-prometheus.json
+  - Grafana/dashboards/definitions/kubelab-pods-monitor.json
+
+# Grafana Storage Class Variables
+grafana_efs_sc_fileSystemId:
+
+grafana_efs_pvc_accessModes: 
+  - ReadWriteMany
+
+grafana_deployment_labels: {
+  app: grafana
+}
+
+grafana_service_scrape_annotations: {
+  "prometheus.io/scrape": "'true'",
+  "prometheus.io/port": "'3000'"
+}

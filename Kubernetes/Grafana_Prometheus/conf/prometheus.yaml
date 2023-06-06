@@ -1,0 +1,30 @@
+template_path: Prometheus-EKS/prometheus.yaml
+environment: dev
+namespace:
+volumes: false
+
+# Storage Class Variables 
+prometheus_efs_sc_fileSystemId:
+
+# Configurations Path's
+prometheus_rules_file_path: Prometheus-EKS/configuration/prometheus.rules
+prometheus_configuration_file_path: Prometheus-EKS/configuration/prometheus.yml
+prometheus_cluster_role_file_path: 
+  - Prometheus-EKS/configuration/cluster_role.yaml
+
+# Prometheus Labels
+prometheus_deployment_labels: {
+  app: prometheus-server
+}
+
+prometheus_configmap_labels: {
+  name: prometheus-server-conf
+}
+
+cluster_roles:
+  - cluster_role_binding_name: default_cluster_role_binding
+    cluster_role_name: prometheus
+    cluster_service_account_name: default
+
+prometheus_efs_pvc_accessModes:
+  - ReadWriteMany

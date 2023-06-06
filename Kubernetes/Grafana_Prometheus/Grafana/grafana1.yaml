@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ grafana_datasources_configmap_metadata_name | default("grafana-datasources") }}
+  namespace: {{ namespace }}
+data:
+{%- for grafana_datasource in grafana_datasources %}
+  {{ grafana_datasource.split('/')[-1] }}: |-
+  {%- macro render_with_indent() %}{% include grafana_datasource %}{% endmacro %}
+    {{ render_with_indent()|indent }}
+{%- endfor %}
+---
+{%- if enable_predefined_dashboards %}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ grafana_dashboard_provider_metadata_name | default("grafana-provider") }}
+  namespace: {{ namespace }}
+data:
+{%- for grafana_dashboard_provider in grafana_dashboard_providers %}
+  {{ grafana_dashboard_provider.split('/')[-1] }}: |-
+  {%- macro render_with_indent() %}{% include grafana_dashboard_provider %}{% endmacro %}
+    {{ render_with_indent()|indent }}
+{%- endfor %}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ grafana_dashboard_definition_metadata_name | default("grafana-definition") }}
+  namespace: {{ namespace }}
+data:
+{%- for grafana_dashboard_definition in grafana_dashboard_definitions %}
+  {{ grafana_dashboard_definition.split('/')[-1] }}: |-
+  {%- macro render_with_indent() %}{% include grafana_dashboard_definition %}{% endmacro %}
+    {{ render_with_indent()|indent }}
+{%- endfor %}
+---
+{%- endif %}
+{%- if volumes %}
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: {{ grafana_efs_sc_metadata_name | default("grafana-efs-sc") }}
+  namespace: {{ namespace }}
+provisioner: {{ grafana_efs_sc_provisioner | default("efs.csi.aws.com") }}
+parameters:
+  provisioningMode: {{ grafana_efs_sc_provisioningMode | default("efs-ap") }}
+  fileSystemId: {{ grafana_efs_sc_fileSystemId }}
+  directoryPerms: {{ grafana_efs_sc_directoryPerms | default("'755'") | safe }}
+  basePath: {{ grafana_efs_sc_basePath | default("'/grafana_dynamic_provisioning'") | safe }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ grafana_efs_pvc_metadata_name | default("grafana-efs-pvc") }}
+  namespace: {{ namespace }}
+spec:
+  accessModes:
+{%- for grafana_efs_pvc_accessMode in grafana_efs_pvc_accessModes %}
+    - {{ grafana_efs_pvc_accessMode }}
+{%- endfor %}
+  storageClassName: {{ grafana_efs_sc_metadata_name | default("grafana-efs-sc") }}
+  resources:
+    requests:
+      storage: {{ grafana_efs_pvc_resources_storage | default("5Gi") }}
+---
+{%- endif %}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ grafana_deployment_metadata_name | default("grafana-deployment") }}
+  namespace: {{ namespace }}
+spec:
+  replicas: {{ grafana_deployment_spec_replicas | default("1") }}
+  selector:
+    matchLabels:
+      {%- for label_key, label_value in grafana_deployment_labels.items() %}
+      {{ label_key ~ ":" ~ " " ~ label_value | safe }}
+      {%- endfor %}
+  template:
+    metadata:
+      name: grafana
+      labels:
+        {%- for label_key, label_value in grafana_deployment_labels.items() %}
+        {{ label_key ~ ":" ~ " " ~ label_value | safe }}
+        {%- endfor %}
+    spec:
+      containers:
+      - name: {{ grafana_deployment_container_name | default("grafana-container-name") }}
+        image: {{ grafana_deployment_container_image | default("grafana/grafana:latest") }}
+        ports:
+        - name: {{ grafana_deployment_container_port_name | default("grafana-port") }}
+          containerPort: {{ grafana_deployment_container_port | default("3000") }}
+        volumeMounts:
+          {%- if volumes %}
+          - mountPath: {{ grafana_deployment_efs_volume_mountPath | default("/var/lib/grafana") }}
+            name: {{ grafana_deployment_efs_volume_name | default("grafana-efs-vol") }}
+          {%- endif %}
+          - mountPath: {{ grafana_deployment_datasource_mountPath | default("/etc/grafana/provisioning/datasources") }}
+            name: {{ grafana_datasources_configmap_volume_name | default("grafana-datasources-volume") }}
+            readOnly: {{ grafana_deployment_datasource_readOnly | default("false") }}
+          {%- if enable_predefined_dashboards %}
+          - mountPath: {{ grafana_deployment_dashboard_provider_mountPath | default("/etc/grafana/provisioning/dashboards") }}
+            name: {{ grafana_dashboard_provider_volume_name | default("grafana-provider-volume") }}
+            readOnly: {{ grafana_deployment_dashboard_provider_readOnly | default("false") }}
+          - mountPath: {{ grafana_deployment_dashboard_definition_mountPath | default("/var/lib/grafana/dashboards") }}
+            name: {{ grafana_dashboard_definition_volume_name | default("grafana-definition-volume") }}
+            readOnly: {{ grafana_deployment_dashboard_definition_readOnly | default("false") }}
+          {%- endif %}
+      volumes:
+        {%- if volumes %}
+        - name: {{ grafana_deployment_efs_volume_name | default("grafana-efs-vol") }}
+          persistentVolumeClaim:
+            claimName: {{ grafana_efs_pvc_metadata_name | default("grafana-efs-pvc") }}
+        {%- endif %}    
+        - name: {{ grafana_datasources_configmap_volume_name | default("grafana-datasources-volume") }}
+          configMap:
+              defaultMode: {{ grafana_datasources_configmap_defaultMode | default("420") }}
+              name: {{ grafana_datasources_configmap_metadata_name | default("grafana-datasources") }}
+        {%- if enable_predefined_dashboards %}
+        - name: {{ grafana_dashboard_definition_volume_name | default("grafana-definition-volume") }}
+          configMap:
+              name: {{ grafana_dashboard_definition_metadata_name | default("grafana-definition") }}
+        - name: {{ grafana_dashboard_provider_volume_name | default("grafana-provider-volume") }}
+          configMap:
+              defaultMode: {{ grafana_dashboard_provider_defaultMode | default("420") }}
+              name: {{ grafana_dashboard_provider_metadata_name | default("grafana-provider") }}
+        {%- endif %}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ grafana_service_metadata_name | default("grafana-service") }}
+  namespace: {{ namespace }}
+  annotations:
+      {%- for annotation_key, annotation_label in grafana_service_scrape_annotations.items() %}
+      {{ annotation_key | safe ~ ":" ~ " " ~ annotation_label | safe }}
+      {%- endfor %}
+spec:
+  selector:
+    {%- for label_key, label_value in grafana_deployment_labels.items() %}
+    {{ label_key ~ ":" ~ " " ~ label_value | safe }}
+    {%- endfor %}
+  type: LoadBalancer  
+  ports:
+    - port: {{ grafana_service_expose_port | default("80") }}
+      targetPort: {{ grafana_deployment_container_port | default("3000") }}
