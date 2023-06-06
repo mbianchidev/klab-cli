@@ -1,1 +1,2 @@
-# Infinity KubeLab
+# kubelab-middleware
+
