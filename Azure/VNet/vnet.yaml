@@ -1,1 +1,38 @@
-template_path: Azure/VNet/vnet.tf
+template_path: vnet.tf
+
+existing_resource_group: false
+resource_group_name: "vnet-resource-group"
+resource_group_location: "West Europe"
+
+nsgs:
+  - nsg_name: "nsg-1" 
+    security_rules:
+      - name: "nsg-1-security-rule-1"
+        priority: 100
+        direction: "Inbound"
+        access: "Allow"
+        protocol: "Tcp"
+        source_port_range: "*"
+        destination_port_range: 80
+        source_address_prefix: "*"
+        destination_address_prefix: "*" 
+      - name: "nsg-1-security-rule-2"
+        priority: 200
+        direction: "Inbound"
+        access: "Allow"
+        protocol: "Tcp"
+        source_port_range: "*"
+        destination_port_range: 443
+        source_address_prefix: "*"
+        destination_address_prefix: "*" 
+  - nsg_name: "nsg-2"
+    security_rules:
+      - name: "nsg-2-security-rule-1"
+        priority: 100
+        direction: "Inbound"
+        access: "Allow"
+        protocol: "Tcp"
+        source_port_range: "*"
+        destination_port_range: 80
+        source_address_prefix: "*"
+        destination_address_prefix: "*"

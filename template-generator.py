@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 class TemplateGenerator:
     CUR_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-    DIR_PATH_TF = os.path.abspath(os.path.join(CUR_DIR_PATH, '..', 'Modules', 'Terraform'))
+    DIR_PATH_TF = os.path.abspath(os.path.join(CUR_DIR_PATH, 'Azure', 'VNet'))
     DIR_PATH_KB = os.path.abspath(os.path.join(CUR_DIR_PATH, '..', 'Modules', 'Kubernetes'))
     DIR_PATH_CF = os.path.abspath(os.path.join(CUR_DIR_PATH, '..', 'Modules', 'CloudFormation'))
 
@@ -22,17 +22,17 @@ class TemplateGenerator:
         :return: Generated Terraform template content
         """
         try:
-            with open(os.path.join(TemplateGenerator.DIR_PATH_TF, 'conf', template)) as file:
+            with open(os.path.join(TemplateGenerator.DIR_PATH_TF, template)) as file:
                 conf_var = yaml.safe_load(file)
 
-            file_loader = FileSystemLoader([os.path.join(TemplateGenerator.DIR_PATH_TF, 'templates')])
+            file_loader = FileSystemLoader([os.path.join(TemplateGenerator.DIR_PATH_TF)])
 
             env = Environment(loader=file_loader, autoescape=True)
 
             jinja_template = env.get_template(conf_var['template_path'])
             output = jinja_template.render(conf_var)
 
-            with open(os.path.join(TemplateGenerator.DIR_PATH_TF, 'output-templates', 'output-tf.tf'), 'w') as f:
+            with open(os.path.join(TemplateGenerator.DIR_PATH_TF, 'Testing', 'output-tf.tf'), 'w') as f:
                 f.write(output)
             return output
         except Exception as err:
