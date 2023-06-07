@@ -22,9 +22,34 @@ resource "azurerm_resource_group" "created_resource_group" {
 }
 {%- endif %}
 
-{% for nsg in nsgs %}
-resource "azurerm_network_security_group" "{{ nsg.nsg_name }}" {
-  name                = "{{ nsg.nsg_name }}"
+resource "azurerm_virtual_network" "{{ vnet_name }}" {
+  name                = "{{ vnet_name }}"
+  {%- if existing_resource_group %}
+  location            = data.azurerm_resource_group.existing_resource_group.location
+  resource_group_name = data.azurerm_resource_group.existing_resource_group.name
+  {%- else %}
+  location            = azurerm_resource_group.created_resource_group.location
+  resource_group_name = azurerm_resource_group.created_resource_group.name
+  {%- endif %}
+  address_space       = {{ vnet_address_space | default('["10.0.0.0/16"]') | safe }}
+  dns_servers         = {{ vnet_dns_servers | default('["10.0.0.4", "10.0.0.5"]') | safe }}
+}
+
+{% for subnet in subnets %}
+resource "azurerm_subnet" "{{ subnet.name }}" {
+  name                 = "{{ subnet.name }}"
+  {%- if existing_resource_group %}
+  resource_group_name = data.azurerm_resource_group.existing_resource_group.name
+  {%- else %}
+  resource_group_name = azurerm_resource_group.created_resource_group.name
+  {%- endif %}
+  virtual_network_name = azurerm_virtual_network.{{ vnet_name }}.name
+  address_prefixes     = {{ subnet.address_prefixes | safe }}
+}
+
+{% if subnet.nsg_name is defined %}
+resource "azurerm_network_security_group" "{{ subnet.nsg_name }}" {
+  name                = "{{ subnet.nsg_name }}"
   {%- if existing_resource_group %}
   location            = data.azurerm_resource_group.existing_resource_group.location
   resource_group_name = data.azurerm_resource_group.existing_resource_group.name
@@ -33,7 +58,7 @@ resource "azurerm_network_security_group" "{{ nsg.nsg_name }}" {
   resource_group_name = azurerm_resource_group.created_resource_group.name
   {%- endif %}
 
-  {% for security_rule in nsg.security_rules %}
+  {% for security_rule in subnet.security_rules %}
   security_rule {
     name                       = "{{ security_rule.name }}"
     priority                   = "{{ security_rule.priority }}"
@@ -47,46 +72,11 @@ resource "azurerm_network_security_group" "{{ nsg.nsg_name }}" {
   }
   {% endfor %}
 }
-{% endfor %}
 
-resource "azurerm_virtual_network" "example" {
-  name                = "{{ vnet_name | default("azure-vnet") }}"
-  {%- if existing_resource_group %}
-  location            = data.azurerm_resource_group.existing_resource_group.location
-  resource_group_name = data.azurerm_resource_group.existing_resource_group.name
-  {%- else %}
-  location            = azurerm_resource_group.created_resource_group.location
-  resource_group_name = azurerm_resource_group.created_resource_group.name
-  {%- endif %}
-  address_space       = ["10.0.0.0/16"]
-  dns_servers         = ["10.0.0.4", "10.0.0.5"]
-
-  tags = {
-    environment = "Production"
-  }
+resource "azurerm_subnet_network_security_group_association" "{{ subnet.name }}" {
+  subnet_id                 = azurerm_subnet.{{ subnet.name }}.id
+  network_security_group_id = azurerm_network_security_group.{{ subnet.nsg_name}}.id
 }
+{% endif %}
 
-resource "azurerm_subnet" "example" {
-  name                 = "example-subnet"
-  {%- if existing_resource_group %}
-  resource_group_name = data.azurerm_resource_group.existing_resource_group.name
-  {%- else %}
-  resource_group_name = azurerm_resource_group.created_resource_group.name
-  {%- endif %}
-  virtual_network_name = azurerm_virtual_network.example.name
-  address_prefixes     = ["10.0.1.0/24"]
-
-  delegation {
-    name = "delegation"
-
-    service_delegation {
-      name    = "Microsoft.ContainerInstance/containerGroups"
-      actions = ["Microsoft.Network/virtualNetworks/subnets/join/action", "Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action"]
-    }
-  }
-}
-
-resource "azurerm_subnet_network_security_group_association" "example" {
-  subnet_id                 = azurerm_subnet.example.id
-  network_security_group_id = azurerm_network_security_group.nsg-1.id
-}
+{%- endfor %}

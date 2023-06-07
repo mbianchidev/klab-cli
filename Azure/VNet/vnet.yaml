@@ -4,8 +4,14 @@ existing_resource_group: false
 resource_group_name: "vnet-resource-group"
 resource_group_location: "West Europe"
 
-nsgs:
-  - nsg_name: "nsg-1" 
+vnet_name: "azure-vnet"
+vnet_address_space: '["10.0.0.0/16"]'
+vnet_dns_servers: '["10.0.0.4", "10.0.0.5"]'
+
+subnets:
+  - name: "subnet-1"
+    address_prefixes: '["10.0.1.0/24"]'
+    nsg_name: "nsg-1" 
     security_rules:
       - name: "nsg-1-security-rule-1"
         priority: 100
@@ -24,8 +30,10 @@ nsgs:
         source_port_range: "*"
         destination_port_range: 443
         source_address_prefix: "*"
-        destination_address_prefix: "*" 
-  - nsg_name: "nsg-2"
+        destination_address_prefix: "*"
+  - name: "subnet-2"
+    address_prefixes: '["10.0.2.0/24"]'
+    nsg_name: "nsg-2"
     security_rules:
       - name: "nsg-2-security-rule-1"
         priority: 100
@@ -36,3 +44,5 @@ nsgs:
         destination_port_range: 80
         source_address_prefix: "*"
         destination_address_prefix: "*"
+  - name: "subnet-3"
+    address_prefixes: '["10.0.3.0/24"]'
