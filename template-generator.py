@@ -26,7 +26,7 @@ class TemplateGenerator:
             with open(os.path.join(dir_path_tf, f'{conf_file}.yaml')) as file:
                 conf_var = yaml.safe_load(file)
 
-            file_loader = FileSystemLoader([dir_path_tf])
+            file_loader = FileSystemLoader(dir_path_tf)
 
             env = Environment(loader=file_loader, autoescape=True)
 
