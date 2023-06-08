@@ -33,10 +33,9 @@ class TemplateGenerator:
             jinja_template = env.get_template(conf_var['template_path'])
             output = jinja_template.render(conf_var)
 
-            if not os.path.exists(TemplateGenerator.TESTING_DIR):
-                os.makedirs(TemplateGenerator.TESTING_DIR)
-
-            with open(os.path.join(TemplateGenerator.TESTING_DIR, f'{conf_file}-output-tf.tf'), 'w') as f:
+            os.makedirs(TemplateGenerator.TESTING_DIR, exist_ok=True)
+            output_path = os.path.join(TemplateGenerator.TESTING_DIR, f'{conf_file}-output-tf.tf')
+            with open(output_path, 'w') as f:
                 f.write(output)
 
             return output
