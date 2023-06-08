@@ -22,8 +22,9 @@ class TemplateGenerator:
         """
         try:
             dir_path_tf = os.path.abspath(os.path.join(TemplateGenerator.CUR_DIR_PATH, cloud_provider, module))
+            conf_path = os.path.join(dir_path_tf, f'{conf_file}.yaml')
 
-            with open(os.path.join(dir_path_tf, f'{conf_file}.yaml')) as file:
+            with open(conf_path) as file:
                 conf_var = yaml.safe_load(file)
 
             file_loader = FileSystemLoader(dir_path_tf)
