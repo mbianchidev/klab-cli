@@ -162,3 +162,6 @@ output-*
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Ignore Testing folder coming from the Template generator
+Testing
