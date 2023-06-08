@@ -163,5 +163,9 @@ output-*
 .terraformrc
 terraform.rc
 
+<<<<<<< HEAD
 # Ignore Testing folder coming from the Template generator
+=======
+# Testing directories
+>>>>>>> 9eead0f1c91fd3b262fc6b8b23c7c07a02e3039a
 Testing
