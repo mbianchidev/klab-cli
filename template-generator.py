@@ -51,9 +51,9 @@ class TemplateGenerator:
         :return: Parsed arguments
         """
         parser = argparse.ArgumentParser(description='Generate or deploy AWS Stack')
-        parser.add_argument("--cloud-provider", "-c", help="Cloud provider name", action="store")
-        parser.add_argument("--module", "-m", help="Module name", action="store")
-        parser.add_argument("--terraform", "-tf", help="Generate Terraform template", action="store")
+        parser.add_argument("--cloud-provider", "-c", help="Cloud provider name", required=True)
+        parser.add_argument("--module", "-m", help="Module name", required=True)
+        parser.add_argument("--terraform", "-tf", help="Generate Terraform template", required=True)
         return parser.parse_args()
 
     def run(self):
