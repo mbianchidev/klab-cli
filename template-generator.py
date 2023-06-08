@@ -63,10 +63,7 @@ class TemplateGenerator:
         args = self.parse_arguments()
         logging.info(args)
 
-        if args.cloud_provider and args.module and args.terraform:
-            self.gen_tf_template(args.cloud_provider, args.module, args.terraform)
-        else:
-            logging.info("Incomplete arguments. Please provide cloud provider, module, and configuration file.")
+        self.gen_tf_template(args.cloud_provider, args.module, args.terraform)
 
 
 if __name__ == '__main__':
