@@ -1,18 +1,15 @@
-{%- for vol in volumes %}
-resource "aws_ebs_volume" "example_{{vol.volume}}" {
-  availability_zone = "{{vol.availability_zone}}"
-  encrypted         = {{vol.encrypted | lower}}
-  size              = {{vol.size}}
-  type              = "{{vol.type}}"
+
+resource "aws_ebs_volume" "example" {
+  for_each = var.ebs_volume
+  availability_zone = each.value.availability_zone
+  encrypted         = each.value.encrypted
+  size              = each.value.size
+  type              = each.value.type
 
   tags = {
-   {%- for k,v in vol.tags.items() %}
-    {{ k }} = "{{ v }}"
-    {%- endfor %}
+    Name = "ebs_for_eks"
   }
-}{%- endfor%}
-{%- for vol in volumes %}
-output "ebs_volume_{{vol.volume}}" {
-    value = aws_ebs_volume.example_{{vol.volume}}.id
 }
-{%- endfor%}
+output "ebs_id" {
+  value = { for k, v in aws_ebs_volume.example : k => v.id }
+}

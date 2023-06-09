@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 class TemplateGenerator:
     CUR_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-    DIR_PATH_TF = os.path.abspath(os.path.join(CUR_DIR_PATH, 'Azure', 'VNet'))
+    DIR_PATH_TF = os.path.abspath(os.path.join(CUR_DIR_PATH, 'AWS', 'EBS'))
     DIR_PATH_KB = os.path.abspath(os.path.join(CUR_DIR_PATH, '..', 'Modules', 'Kubernetes'))
     DIR_PATH_CF = os.path.abspath(os.path.join(CUR_DIR_PATH, '..', 'Modules', 'CloudFormation'))
 
@@ -48,10 +48,10 @@ class TemplateGenerator:
         :return: Generated Kubernetes template content
         """
         try:
-            with open(os.path.join(TemplateGenerator.DIR_PATH_KB, 'conf', template)) as file:
+            with open(os.path.join(TemplateGenerator.DIR_PATH_KB, template)) as file:
                 conf_var = yaml.safe_load(file)
 
-            file_loader = FileSystemLoader([os.path.join(TemplateGenerator.DIR_PATH_KB, 'templates')])
+            file_loader = FileSystemLoader([os.path.join(TemplateGenerator.DIR_PATH_KB)])
 
             env = Environment(loader=file_loader, autoescape=True)
 
