@@ -17,6 +17,14 @@ locals {
   ]
 }
 
+data "azuread_user" "owner" {
+  user_principal_name = "daniel@kubelab.cloud"
+}
+
+resource "time_rotating" "one_week" {
+  rotation_days = 7
+}
+
 resource "azuread_application" "aks_application" {
   display_name = "AKS Cluster Application"
   owners       = local.owners
@@ -26,14 +34,6 @@ resource "azuread_service_principal" "aks_service_principal" {
   application_id               = azuread_application.aks_application.application_id
   app_role_assignment_required = false
   owners                       = local.owners
-}
-
-data "azuread_user" "owner" {
-  user_principal_name = "daniel@kubelab.cloud"
-}
-
-resource "time_rotating" "one_week" {
-  rotation_days = 7
 }
 
 resource "azuread_service_principal_password" "sp_password" {
