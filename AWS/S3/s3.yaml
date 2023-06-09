@@ -1,4 +1,4 @@
-template_path: S3/s3.tf
+template_path: s3.tf
 
 buckets:
   

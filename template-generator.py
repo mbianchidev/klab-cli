@@ -53,7 +53,7 @@ class TemplateGenerator:
         parser = argparse.ArgumentParser(description='Generate or deploy AWS Stack')
         parser.add_argument("--cloud-provider", "-c", help="Cloud provider name", required=True)
         parser.add_argument("--module", "-m", help="Module name", required=True)
-        parser.add_argument("--terraform", "-tf", help="Generate Terraform template", required=True)
+        parser.add_argument("--conf-file", "-f", help="Name of the configuration file", required=True)
         return parser.parse_args()
 
     def run(self):
@@ -63,7 +63,7 @@ class TemplateGenerator:
         args = self.parse_arguments()
         logging.info(args)
 
-        self.gen_tf_template(args.cloud_provider, args.module, args.terraform)
+        self.gen_tf_template(args.cloud_provider, args.module, args.conf_file)
 
 
 if __name__ == '__main__':
