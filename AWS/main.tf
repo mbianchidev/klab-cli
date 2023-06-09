@@ -1,0 +1,3 @@
+module "EBS" {
+  source = "./EBS"
+}

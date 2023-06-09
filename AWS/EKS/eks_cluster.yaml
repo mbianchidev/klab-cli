@@ -1,4 +1,4 @@
-template_path: EKS/eks_cluster.tf
+template_path: eks_cluster.tf
 environment: dev
 region: eu-west-1
 
