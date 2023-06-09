@@ -1,16 +1,3 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 3.41.0"
-    }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 2.36.0"
-    }
-  }
-}
-
 locals {
   owners = [
     data.azuread_user.owner.object_id
@@ -18,46 +5,36 @@ locals {
 }
 
 data "azuread_user" "owner" {
-  user_principal_name = "daniel@kubelab.cloud"
+  user_principal_name = var.user_principal_name
 }
 
 resource "time_rotating" "one_week" {
-  rotation_days = 7
+  rotation_days = var.rotation_days
 }
 
-resource "azuread_application" "aks_application" {
-  display_name = "AKS Cluster Application"
+resource "azuread_application" "application" {
+  display_name = var.application_display_name
   owners       = local.owners
 }
 
-resource "azuread_service_principal" "aks_service_principal" {
-  application_id               = azuread_application.aks_application.application_id
-  app_role_assignment_required = false
+resource "azuread_service_principal" "service_principal" {
+  application_id               = azuread_application.application.application_id
+  app_role_assignment_required = var.service_principal_app_role_assignment_required
   owners                       = local.owners
 }
 
-resource "azuread_service_principal_password" "sp_password" {
-  display_name         = "The service principal password"
-  service_principal_id = azuread_service_principal.aks_service_principal.object_id
+resource "azuread_service_principal_password" "service_principal_password" {
+  display_name         = var.service_principal_password_display_name
+  service_principal_id = azuread_service_principal.service_principal.object_id
   rotate_when_changed = {
     rotation = time_rotating.one_week.id
   }
 }
 
-resource "azuread_application_password" "app_password" {
-  display_name = "The app password"
-  application_object_id = azuread_application.aks_application.object_id
+resource "azuread_application_password" "application_password" {
+  display_name          = var.application_password_display_name
+  application_object_id = azuread_application.application.object_id
   rotate_when_changed = {
     rotation = time_rotating.one_week.id
   }
-}
-
-output "sp_cliend_secret" {
-  value = azuread_service_principal_password.sp_password.value
-  sensitive = true
-}
-
-output "app_client_secret" {
-  value = azuread_application_password.app_password.value
-  sensitive = true
 }
