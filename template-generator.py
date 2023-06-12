@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 
 class TemplateGenerator:
     CUR_DIR_PATH = os.path.dirname(os.path.abspath(__file__))
-    DIR_PATH_TF = os.path.abspath(os.path.join(CUR_DIR_PATH, 'AWS', 'EBS'))
+    DIR_PATH_TF = os.path.abspath(os.path.join(CUR_DIR_PATH, 'AWS', 'S3'))
     DIR_PATH_KB = os.path.abspath(os.path.join(CUR_DIR_PATH, '..', 'Modules', 'Kubernetes'))
     DIR_PATH_CF = os.path.abspath(os.path.join(CUR_DIR_PATH, '..', 'Modules', 'CloudFormation'))
 
