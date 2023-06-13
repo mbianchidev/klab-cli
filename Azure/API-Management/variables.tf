@@ -56,3 +56,7 @@ variable "api_protocols" {
 variable "api_service_url" {
   default = "http://a65ad71c0ffbb4bb7b12fbdbc9487709-175287693.eu-west-2.elb.amazonaws.com"
 }
+
+variable "api_content_format" {
+  default = "openapi+json"
+}

@@ -37,7 +37,7 @@ resource "azurerm_api_management_api" "kubernetes_nginx_api" {
   service_url         = var.api_service_url
 
   import {
-    content_format = "openapi+json"
+    content_format = var.api_content_format
     content_value  = "${file("${path.module}/API/kubernetes_nginx_api.json")}"
   }
 }
