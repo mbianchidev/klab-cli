@@ -15,7 +15,7 @@ resource "aws_route53_zone" "zone-{{ zone_domain_suffix }}" {
   name = "{{ zone_domain_name }}"
 }
 
-{% if private_zone == true -%}
+{% if private_zone == true %}
 resource "aws_route53_vpc_association_authorization" "{{ vpc_authorization_name }}" {
   vpc_id  = "{{ vpc_id }}"
   zone_id = aws_route53_zone.zone-{{ zone_domain_suffix }}.zone_id
@@ -27,7 +27,7 @@ resource "aws_route53_zone_association" "{{ vpc_association }}" {
   zone_id = aws_route53_vpc_association_authorization.{{ vpc_authorization_name }}.zone_id
   vpc_region = aws_route53_vpc_association_authorization.{{ vpc_authorization_name }}.vpc_region
 }
-{%- endif %}
+{% endif %}
 
 resource "aws_route53_record" "record-{{ zone_domain_suffix }}" {
   zone_id = aws_route53_zone.zone-{{ zone_domain_suffix }}.zone_id
