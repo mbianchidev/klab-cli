@@ -11,20 +11,33 @@ provider "azurerm" {
   features {}
 }
 
+variable "use_existing_resource_group" {
+  description = "Flag to indicate whether to use an existing resource group or create a new one"
+  type        = bool
+  default     = false
+}
+
 resource "azurerm_resource_group" "dns_service_resource_group" {
+  count    = var.use_existing_resource_group ? 0 : 1
   name     = var.resource_group_name
   location = var.resource_group_location
 }
 
+data "azurerm_resource_group" "existing" {
+  count      = var.use_existing_resource_group ? 1 : 0
+  name       = var.resource_group_name
+  depends_on = [azurerm_resource_group.dns_service_resource_group]
+}
+
 resource "azurerm_dns_zone" "dns_zone" {
   name                = var.dns_zone_name
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
 }
 
 resource "azurerm_dns_a_record" "main_dns_a_record" {
   name                = var.main_dns_a_record_name
   zone_name           = azurerm_dns_zone.dns_zone.name
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
   ttl                 = var.main_dns_a_record_ttl
   records             = [var.main_dns_a_record_ip_address]
 }
@@ -33,7 +46,7 @@ resource "azurerm_dns_a_record" "subdomain_dns_a_record" {
   for_each            = var.subdomains
   name                = each.value.subdomain_name
   zone_name           = azurerm_dns_zone.dns_zone.name
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
   ttl                 = each.value.subdomain_ttl
   records             = [each.value.subdomain_records]
 }
@@ -41,38 +54,36 @@ resource "azurerm_dns_a_record" "subdomain_dns_a_record" {
 resource "azurerm_dns_ns_record" "dns_ns_record" {
   name                = var.dns_ns_record_name
   zone_name           = azurerm_dns_zone.dns_zone.name
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
   ttl                 = var.dns_ns_ttl
   records             = var.dns_ns_records
 }
 
-# The Virtual Machine that is used for testing.
-
 resource "azurerm_virtual_network" "example" {
   name                = "example-vnet"
   address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.dns_service_resource_group.location
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  location            = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.dns_service_resource_group[0].location
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
 }
 
 resource "azurerm_subnet" "example" {
   name                 = "example-subnet"
-  resource_group_name  = azurerm_resource_group.dns_service_resource_group.name
+  resource_group_name  = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
   virtual_network_name = azurerm_virtual_network.example.name
   address_prefixes     = ["10.0.0.0/24"]
 }
 
 resource "azurerm_public_ip" "example" {
   name                = "example-public-ip"
-  location            = azurerm_resource_group.dns_service_resource_group.location
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  location            = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.dns_service_resource_group[0].location
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
   allocation_method   = "Static"
 }
 
 resource "azurerm_network_security_group" "example" {
   name                = "example-nsg"
-  location            = azurerm_resource_group.dns_service_resource_group.location
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  location            = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.dns_service_resource_group[0].location
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
 }
 
 resource "azurerm_network_security_rule" "example" {
@@ -85,14 +96,14 @@ resource "azurerm_network_security_rule" "example" {
   destination_port_range      = "80"
   destination_address_prefix  = "*"
   source_address_prefixes     = ["0.0.0.0/0"]
-  resource_group_name         = azurerm_resource_group.dns_service_resource_group.name
+  resource_group_name         = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
   network_security_group_name = azurerm_network_security_group.example.name
 }
 
 resource "azurerm_network_interface" "example" {
   name                = "example-nic"
-  location            = azurerm_resource_group.dns_service_resource_group.location
-  resource_group_name = azurerm_resource_group.dns_service_resource_group.name
+  location            = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.dns_service_resource_group[0].location
+  resource_group_name = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
 
   ip_configuration {
     name                          = "example-nic-config"
@@ -104,8 +115,8 @@ resource "azurerm_network_interface" "example" {
 
 resource "azurerm_linux_virtual_machine" "example" {
   name                            = "example-vm"
-  location                        = azurerm_resource_group.dns_service_resource_group.location
-  resource_group_name             = azurerm_resource_group.dns_service_resource_group.name
+  location                        = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].location : azurerm_resource_group.dns_service_resource_group[0].location
+  resource_group_name             = var.use_existing_resource_group ? data.azurerm_resource_group.existing[0].name : azurerm_resource_group.dns_service_resource_group[0].name
   size                            = "Standard_DS1_v2"
   admin_username                  = "adminuser"
   disable_password_authentication = false # Enable password authentication
