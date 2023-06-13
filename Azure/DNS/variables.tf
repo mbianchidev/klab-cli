@@ -36,7 +36,7 @@ variable "main_dns_a_record_ttl" {
 
 variable "main_dns_a_record_ip_address" {
   description = "The IP address associated with the DNS record"
-  default     = "20.16.124.234"
+  default     = "20.105.135.217"
   type        = string
 }
 
@@ -45,14 +45,14 @@ variable "main_dns_a_record_ip_address" {
 variable "subdomains" {
   default = {
     subdomain-1 = {
-      subdomain_name = "sub"
+      subdomain_name = "kube"
       subdomain_ttl = 60
-      subdomain_records = "20.16.124.234"
+      subdomain_records = "20.105.135.217"
     }
     subdomain-2 = {
-      subdomain_name = "subb"
+      subdomain_name = "kubee"
       subdomain_ttl = 60
-      subdomain_records = "20.16.124.234"
+      subdomain_records = "20.105.135.217"
     }
   }
 }
