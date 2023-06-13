@@ -1,4 +1,4 @@
-template_path: API-Gateway/api_gateway.tf
+template_path: api_gateway.tf
 
 paths:
   - path_name: /path1
