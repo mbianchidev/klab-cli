@@ -54,7 +54,7 @@ variable "api_protocols" {
 }
 
 variable "api_service_url" {
-  default = "http://a65ad71c0ffbb4bb7b12fbdbc9487709-175287693.eu-west-2.elb.amazonaws.com"
+  default = "http://20.101.230.9/"
 }
 
 variable "api_content_format" {
