@@ -1,13 +1,19 @@
 ##### Resource Group #####
 
+variable "use_existing_resource_group" {
+  description = "Flag to indicate whether to use an existing resource group or create a new one"
+  type        = bool
+  default     = false
+}
+
 variable "resource_group_location" {
-  description = "The location of the resource group."
+  description = "The location of the resource group"
   type        = string
   default     = "West Europe"
 }
 
 variable "resource_group_name" {
-  description = "The name of the resource group."
+  description = "The name of the resource group"
   type        = string
   default     = "example-resources-for-dns"
 }
@@ -36,7 +42,7 @@ variable "main_dns_a_record_ttl" {
 
 variable "main_dns_a_record_ip_address" {
   description = "The IP address associated with the DNS record"
-  default     = "20.105.135.217"
+  default     = "20.107.125.4"
   type        = string
 }
 
@@ -45,19 +51,25 @@ variable "main_dns_a_record_ip_address" {
 variable "subdomains" {
   default = {
     subdomain-1 = {
-      subdomain_name = "kube"
+      subdomain_name = "first"
       subdomain_ttl = 60
-      subdomain_records = "20.105.135.217"
+      subdomain_records = "20.107.125.4"
     }
     subdomain-2 = {
-      subdomain_name = "kubee"
+      subdomain_name = "second"
       subdomain_ttl = 60
-      subdomain_records = "20.105.135.217"
+      subdomain_records = "20.107.125.4"
     }
   }
 }
 
 ##### NS Records #####
+
+variable "add_ns_record" {
+  description = "Flag to indicate whether to add NS Record or not"
+  type        = bool
+  default     = false
+}
 
 variable "dns_ns_record_name" {
   description = "NS Record Name"
