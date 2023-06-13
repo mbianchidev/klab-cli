@@ -1,22 +1,3 @@
-
-# File system
-
-# resource "aws_efs_file_system" "eks_efs_file_system" {
-#   performance_mode = "generalPurpose"
-#   encrypted        = true
-# }
-# resource "aws_efs_mount_target" "efs_mount_target_1" {
-#   file_system_id  = aws_efs_file_system.eks_efs_file_system.id
-#   subnet_id       = var.vpc_private_subnet_1
-#   security_groups = [var.vpc_security_group]
-
-# }
-# resource "aws_efs_mount_target" "efs_mount_target_2" {
-#   file_system_id  = aws_efs_file_system.eks_efs_file_system.id
-#   subnet_id       = var.vpc_private_subnet_1
-#   security_groups = [var.vpc_security_group]
-
-# }
 # EKS cluster role 
 
 resource "aws_iam_role" "eks_cluster_role" {
