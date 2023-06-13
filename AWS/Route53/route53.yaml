@@ -1,4 +1,4 @@
-template_path: Route53/route53.tf
+template_path: route53.tf
 stack_name: DevOps Stack
 
 zone_domain_suffix: kubelab
