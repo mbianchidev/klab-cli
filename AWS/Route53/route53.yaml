@@ -28,7 +28,7 @@ records:
       - Environment = "dev"
     # TODO: We need to add more routing policies (now only weighted is supported). 
     # cidr_routing_policy, failover_routing_policy, geolocation_routing_policy, latency_routing_policy, multivalue_answer_routing_policy
-    - label: ipv6
+  - label: ipv6
     name: this-is-ipv6.com
     protocol: ipv6
     allow_overwrite: false
