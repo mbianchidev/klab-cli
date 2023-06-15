@@ -9,23 +9,28 @@ variable "api_paths" {
   type        = map(any)
   default = {
     "/path1" = {
-      "get" = {
-        "httpMethod"           = "GET"
-        "payloadFormatVersion" = "1.0"
-        "type"                 = "HTTP_PROXY"
-        "uri"                  = "https://ip-ranges.amazonaws.com/ip-ranges.json"
-      }
-    },
+        "get" = {
+          x-amazon-apigateway-integration = {
+            httpMethod           = "GET"
+            payloadFormatVersion = "1.0"
+            type                 = "HTTP_PROXY"
+            uri                  = "https://ip-ranges.amazonaws.com/ip-ranges.json"
+          }
+        }
+      },
     "/path2" = {
-      "get" = {
-        "httpMethod"           = "GET"
-        "payloadFormatVersion" = "1.0"
-        "type"                 = "HTTP_PROXY"
-        "uri"                  = "https://ip-ranges.amazonaws.com/ip-ranges.json"
-      }
+        "get" = {
+          x-amazon-apigateway-integration = {
+            httpMethod           = "GET"
+            payloadFormatVersion = "1.0"
+            type                 = "HTTP_PROXY"
+            uri                  = "https://ip-ranges.amazonaws.com/ip-ranges.json"
+          }
+        }
+      },
     }
   }
-}
+
 variable "endpoint_types" {
   description = "Types of endpoint configuration"
   type        = list(string)
