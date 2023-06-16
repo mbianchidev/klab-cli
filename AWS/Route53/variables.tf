@@ -191,12 +191,6 @@ variable "elb_name" {
   default = "route53-elb"
 }
 
-variable "elb_instances" {
-  default = [
-    "54.155.207.178"
-  ]
-}
-
 variable "elb_availability_zones" {
   default = [
     "eu-west-1b",
