@@ -8,7 +8,7 @@ variable "s3_bucket" {
     }
     s3_second = {
       force_destroy = true
-      bucket = "kubelab-bucket"
+      bucket = "blagoj-bucket"
       versioning_configuration = "Enabled"
     }
   }

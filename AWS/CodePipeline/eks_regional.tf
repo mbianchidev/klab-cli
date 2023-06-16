@@ -131,12 +131,11 @@ resource "aws_iam_policy" "codebuild_policy" {
     {
       "Effect": "Allow",
       "Action": [
-        "*:*",
+        "eks:*",
         "eks:List*",
         "eks:Create*",
         "eks:Delete*",
         "eks:Update*",
-        "ec2:*",
         "ec2:List*",
         "ecr:GetAuthorizationToken",
         "ecr:GetDownloadUrlForLayer",
