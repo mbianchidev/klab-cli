@@ -180,3 +180,69 @@ variable "weighted_record" {
     }
   }
 }
+
+##### Load Balancer #####
+
+variable "with_elb" {
+  default = true
+}
+
+variable "elb_name" {
+  default = "route53-elb"
+}
+
+variable "elb_instances" {
+  default = [
+    "54.155.207.178"
+  ]
+}
+
+variable "elb_availability_zones" {
+  default = [
+    "eu-west-1b",
+    "eu-west-1c"
+  ]
+}
+
+variable "elb_cross_zone_load_balancing" {
+  default = true
+}
+
+variable "elb_idle_timeout" {
+  default = 400
+}
+
+variable "elb_connection_draining" {
+  default = true
+}
+
+variable "elb_connection_draining_timeout" {
+  default = 400
+}
+
+variable "elb_target" {
+  default = "HTTP:80/"
+}
+
+variable "elb_interval" {
+  default = 30
+}
+
+variable "elb_healthy_threshold" {
+  default = 2
+}
+
+variable "elb_unhealthy_threshold" {
+  default = 2
+}
+
+variable "elb_timeout" {
+  default = 5
+}
+
+variable "elb_listeners" {
+  type = map(any)
+  default = {
+    80 = "HTTP"
+  }
+}

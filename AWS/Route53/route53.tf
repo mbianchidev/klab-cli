@@ -102,55 +102,31 @@ resource "aws_route53_record" "weighted-record" {
   }
 }
 
+resource "aws_elb" "load_balancer" {
+  count                       = var.with_elb ? 1 : 0
+  name                        = var.elb_name
+  # instances                   = var.elb_instances
+  availability_zones          = var.elb_availability_zones
+  cross_zone_load_balancing   = var.elb_cross_zone_load_balancing
+  idle_timeout                = var.elb_idle_timeout
+  connection_draining         = var.elb_connection_draining
+  connection_draining_timeout = var.elb_connection_draining_timeout
 
-# {% if with_elb == true -%}
-# {%- for elb in elbs %}
-# resource "aws_elb" "{{ elb.elb_name }}" {
-#   name               = "{{ elb.elb_name }}"
-#   instances          = [
-#     {%- for instance in elb.elb_instances -%}
-#     "{{ instance.name }}"{% if not loop.last %},
-#     {%- endif -%}
-#     {%- endfor -%}
-#   ]
-#   availability_zones = [
-#     {%- for availability_zone in elb.elb_availability_zones -%}
-#     "{{ availability_zone.name }}"{% if not loop.last %},
-#     {%- endif -%}
-#     {%- endfor -%}
-#   ]
-#   cross_zone_load_balancing   = true
-#   idle_timeout                = 400
-#   connection_draining         = true
-#   connection_draining_timeout = 400
+  dynamic "listener" {
+    for_each = var.elb_listeners
+    content {
+      instance_port     = listener.key
+      instance_protocol = listener.value
+      lb_port           = listener.key
+      lb_protocol       = listener.value
+    }
+  }
 
-#   {%- for listener in elb.elb_listeners %}
-#   listener {
-#     instance_port     = {{ listener.port }}
-#     instance_protocol = "{{ listener.protocol }}"
-#     lb_port           = {{ listener.lb_port }}
-#     lb_protocol       = "{{ listener.lb_protocol }}"
-#     {%- if listener.ssl_certificate_id is defined and listener.ssl_certificate_id != "" %}
-#     ssl_certificate_id = "{{ listener.ssl_certificate_id }}"
-#     {%- endif %}
-#   }
-#   {%- endfor %}
-
-#   health_check {
-#     healthy_threshold   = {{ elb.elb_healthy_threshold }}
-#     unhealthy_threshold = {{ elb.elb_unhealthy_threshold }}
-#     timeout             = {{ elb.elb_timeout }}
-#     target              = "{{ elb.elb_target }}"
-#     interval            = {{ elb.elb_interval }}
-#   }
-
-#   {%- if elb.elb_s3_bucket_name is defined and elb.elb_bucket_prefix is defined %}
-#   access_logs {
-#     bucket        = "{{ elb.elb_s3_bucket_name }}"
-#     bucket_prefix = "{{ elb.elb_bucket_prefix }}"
-#     interval      = 60
-#   }
-#   {%- endif %}
-# }
-# {% endfor %}
-# {%- endif %}
+  health_check {
+    healthy_threshold   = var.elb_healthy_threshold
+    unhealthy_threshold = var.elb_unhealthy_threshold
+    timeout             = var.elb_timeout
+    target              = var.elb_target
+    interval            = var.elb_interval
+  }
+}
