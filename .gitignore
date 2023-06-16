@@ -162,6 +162,6 @@ output-*
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
-
+.terraform
 # Testing directories
 Testing
