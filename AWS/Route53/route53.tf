@@ -105,7 +105,6 @@ resource "aws_route53_record" "weighted-record" {
 resource "aws_elb" "load_balancer" {
   count                       = var.with_elb ? 1 : 0
   name                        = var.elb_name
-  # instances                   = var.elb_instances
   availability_zones          = var.elb_availability_zones
   cross_zone_load_balancing   = var.elb_cross_zone_load_balancing
   idle_timeout                = var.elb_idle_timeout
