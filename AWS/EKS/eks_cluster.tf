@@ -74,7 +74,7 @@ resource "null_resource" "update_aws_auth1" {
       eksctl create iamidentitymapping \
         --cluster eks \
         --region eu-west-1 \
-        --arn None \
+        --arn arn:aws:iam::530833340881:user/Daniel \
         --group system:masters \
         --no-duplicate-arns \
         --username daniel      
