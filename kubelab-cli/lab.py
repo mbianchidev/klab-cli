@@ -172,7 +172,56 @@ def create(param_type, cloud_provider, module, file):
             #     subprocess.run(['terraform', 'plan'])
         elif param_type == 'rbac':
             click.echo("This feature future will be available soon")
-            
+
+
+@cli.command()
+@click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
+@click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
+@click.option('--version', type=click.STRING, default='1.4.2', help="Operator version", required=False)
+def add(type, product, version):
+    if type == 'operator' and product == 'nginx':
+        print(f'Adding NGINX with {version} version')
+        repo_dir = 'nginx-ingress-helm-operator'
+        if not os.path.exists(repo_dir):
+            subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
+                            '--branch', f'v{version}'])
+        os.chdir(repo_dir)
+        # Deploy the Operator
+        img = f'nginx/nginx-ingress-operator:{version}'
+        subprocess.run(['make', 'deploy', f'IMG={img}'])
+        subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
+
+        print(f'Nginx operator installed successfully with {version} version')
+    elif type == 'deployment' and product == 'nginx':
+        print("Installing nginx with deployment and lattest version")
+        deploy_repo = "nginx_deployment"
+        os.chdir(deploy_repo)
+        subprocess.run(['kubectl', 'apply', '-f', 'deployment.yaml'])
+    else:
+        print('Invalid configuration.')
+
+
+@cli.command()
+@click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
+@click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
+@click.option('--version', type=click.STRING, default='1.4.2', help="Operator version", required=False)
+def delete(type, product, version):
+    if type == 'operator' and product == 'nginx':
+        print(f'Deleting NGINX with {version} version')
+        repo_dir = 'nginx-ingress-helm-operator'
+        os.chdir(repo_dir)
+        subprocess.run(['make', 'undeploy'])
+
+        print(f'Nginx operator deleted successfully with {version} version')
+    elif type == 'deployment' and product == 'nginx':
+        print("Deleting nginx deployment with lattest version")
+        deploy_repo = "nginx_deployment"
+        os.chdir(deploy_repo)
+        subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
+    else:
+        print('Invalid configuration.')
+
+
 
 if __name__ == '__main__':
     cli()

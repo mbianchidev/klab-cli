@@ -165,3 +165,4 @@ terraform.rc
 .terraform
 # Testing directories
 Testing
+nginx-ingress-helm-operator/
