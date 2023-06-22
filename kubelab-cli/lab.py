@@ -3,7 +3,6 @@
 import click
 import boto3
 import os
-import argparse
 import logging
 import subprocess
 import yaml
@@ -74,42 +73,14 @@ class TemplateGenerator:
 @cli.command()
 @click.option('--file', type=click.Path(exists=True), help='Path to the config file in yaml format',)
 @click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.argument('cloud_provider', type=click.Choice(['AWS', 'AZURE', 'GCP']))
-@click.argument('module', type=click.Choice(['EKS', 'EBS', 'S3']))
-def create(param_type, cloud_provider, module, file):
+def create(param_type, file):
     if file is None:
         click.echo('Config file not provided.')
     else:
         if param_type == 'role':
             click.echo("This feature will be available soon")
         elif param_type == 'cluster':
-            try:
-                dir_path_tf = os.path.abspath(os.path.join(TemplateGenerator.CUR_DIR_PATH, cloud_provider, module))
-                conf_path = os.path.join(dir_path_tf, f'{file}')
-
-                with open(conf_path) as file:
-                    conf_var = yaml.safe_load(file)
-
-                file_loader = FileSystemLoader(dir_path_tf)
-
-                env = Environment(loader=file_loader, autoescape=True)
-
-                jinja_template = env.get_template(conf_var['template_path'])
-                output = jinja_template.render(conf_var)
-
-                os.makedirs(TemplateGenerator.TESTING_DIR, exist_ok=True)
-                output_path = os.path.join(TemplateGenerator.TESTING_DIR, 'output-tf.tf')
-                with open(output_path, 'w') as f:
-                    f.write(output)
-                print("Your template is created")
-                ter_dir = os.path.join(TemplateGenerator.TESTING_DIR)
-                os.chdir(ter_dir)
-                subprocess.run(['terraform', 'init'])
-                subprocess.run(['terraform', 'plan'])
-                return output
-            except Exception as err:
-                logging.exception("Can't generate Terraform template")
-                return str(err)
+            print("Creatin cluster....")
             # if file.name == 'eks_cluster.yaml':
             #     print("Creating cluster with conf from this file: ", file.name)
             #     subprocess.run(['python3', 'template-generator.py', '--tf', file.name])
@@ -205,11 +176,36 @@ def add(type, product, version):
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, default='1.4.2', help="Operator version", required=False)
+def update(type, product, version):
+    if type == 'operator' and product == 'nginx':
+        print(f'Upadating NGINX with latest {version} version')
+        repo_dir = 'nginx-ingress-helm-operator'
+        if not os.path.exists(repo_dir):
+            subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
+                            '--branch', f'v{version}'])
+        os.chdir(repo_dir)
+        # Update the Operator 
+        img = f'nginx/nginx-ingress-operator:{version}'
+        subprocess.run(['make', 'deploy', f'IMG={img}'])
+        subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
+
+        print(f'Nginx operator updated successfully with {version} version')
+    elif type == 'deployment' and product == 'nginx':
+        print("Cant't update via deployment type must be changed in the yaml manifest.")
+    else:
+        print('Invalid configuration.')
+
+
+@cli.command()
+@click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
+@click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
+@click.option('--version', type=click.STRING, default='1.4.2', help="Operator version", required=False)
 def delete(type, product, version):
     if type == 'operator' and product == 'nginx':
         print(f'Deleting NGINX with {version} version')
         repo_dir = 'nginx-ingress-helm-operator'
         os.chdir(repo_dir)
+        # Delete the deployed operator
         subprocess.run(['make', 'undeploy'])
 
         print(f'Nginx operator deleted successfully with {version} version')
@@ -220,7 +216,6 @@ def delete(type, product, version):
         subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
     else:
         print('Invalid configuration.')
-
 
 
 if __name__ == '__main__':
