@@ -166,3 +166,4 @@ terraform.rc
 # Testing directories
 Testing
 nginx-ingress-helm-operator/
+credentials/
