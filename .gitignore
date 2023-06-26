@@ -171,3 +171,6 @@ nginx-ingress-helm-operator/
 azure_kube_credential.json
 aws_kube_credential.txt
 kube_credentials.txt
+
+# State for lab CLI
+lab_state.json
