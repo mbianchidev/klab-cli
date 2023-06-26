@@ -4,6 +4,7 @@ import click
 import boto3
 import os
 import subprocess
+import json
 
 
 @click.group()
@@ -55,8 +56,22 @@ def init(ctx, cp):
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key
             )
-    elif cp == "Azure":
-        print("taking crednential from Azure ")    
+    elif cp == 'Azure':
+        try:
+            # Use Azure CLI to retrieve the currently logged-in Azure account
+            result = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
+            if result.returncode == 0:
+                output = result.stdout.strip()
+
+                # Save the credentials to a file
+                credential_file_path = 'credentials/azure_kube_credential.json'
+                with open(credential_file_path, 'w') as f:
+                    f.write(output)
+                click.echo(f'Credentials saved to {credential_file_path}')
+            else:
+                click.echo('Azure login failed. Please make sure Azure CLI is installed and logged in.')
+        except Exception as e:
+            click.echo(f'Error occurred while retrieving Azure credentials: {str(e)}')
     else:
         click.echo('Unsupported credentials provider.')
 
