@@ -4,6 +4,7 @@ import click
 import boto3
 import os
 import subprocess
+import json
 
 
 @click.group()
@@ -23,7 +24,7 @@ def init(ctx, cp):
         aws_credentials_file = os.path.expanduser('~/.aws/credentials')
         if os.path.isfile(aws_credentials_file):
             # Read the AWS credentials from the file
-            aws_credentials = dict()
+            aws_credentials = {}
             with open(aws_credentials_file, 'r') as f:
                 lines = f.readlines()
                 for line in lines:
@@ -38,38 +39,83 @@ def init(ctx, cp):
             with open(credential_file_path, 'w') as f:
                 f.write(f"AWS Access Key ID: {aws_credentials['aws_access_key_id']}\n")
                 f.write(f"AWS Secret Access Key: {aws_credentials['aws_secret_access_key']}\n")
-                click.echo(f'Credentials saved to {credential_file_path}')
+            click.echo(f'Credentials saved to {credential_file_path}')
+
+            # Save the state
+            state = {'initialized_cloud_provider': 'AWS'}
+            state_file_path = 'state/lab_state.json'
+            os.makedirs(os.path.dirname(state_file_path), exist_ok=True)  # Create 'state' folder if it doesn't exist
+            with open(state_file_path, 'w') as f:
+                json.dump(state, f)
+            click.echo(f'State saved to {state_file_path}')
         else:
             click.echo('AWS credentials file not found. Please enter the credentials.')
             aws_access_key_id = click.prompt('AWS Access Key ID')
             aws_secret_access_key = click.prompt('AWS Secret Access Key', hide_input=True)
 
             # Save the credentials to a file
-            credential_file_path = 'credential/aws_kube_credential.txt'
+            credential_file_path = 'credentials/aws_kube_credential.txt'
             with open(credential_file_path, 'w') as f:
                 f.write(f"AWS Access Key ID: {aws_access_key_id}\n")
                 f.write(f"AWS Secret Access Key: {aws_secret_access_key}\n")
-                click.echo(f'Credentials saved to {credential_file_path}')
+            click.echo(f'Credentials saved to {credential_file_path}')
+
+            # Save the state
+            state = {'initialized_cloud_provider': 'AWS'}
+            state_file_path = 'state/lab_state.json'
+            os.makedirs(os.path.dirname(state_file_path), exist_ok=True)  # Create 'state' folder if it doesn't exist
+            with open(state_file_path, 'w') as f:
+                json.dump(state, f)
+            click.echo(f'State saved to {state_file_path}')
 
             session = boto3.Session(
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key
             )
-    elif cp == "Azure":
-        print("taking crednential from Azure ")    
+    elif cp == 'Azure':
+        try:
+            # Use Azure CLI to retrieve the currently logged-in Azure account
+            result = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
+            if result.returncode == 0:
+                output = result.stdout.strip()
+
+                # Save the credentials to a file
+                credential_file_path = 'credentials/azure_kube_credential.json'
+                with open(credential_file_path, 'w') as f:
+                    f.write(output)
+                click.echo(f'Credentials saved to {credential_file_path}')
+
+                # Save the state
+                state = {'initialized_cloud_provider': 'Azure'}
+                state_file_path = 'state/lab_state.json'
+                os.makedirs(os.path.dirname(state_file_path), exist_ok=True)  # Create 'state' folder if it doesn't exist
+                with open(state_file_path, 'w') as f:
+                    json.dump(state, f)
+                click.echo(f'State saved to {state_file_path}')
+            else:
+                click.echo('Azure login failed. Please make sure Azure CLI is installed and logged in.')
+        except Exception as e:
+            click.echo(f'Error occurred while retrieving Azure credentials: {str(e)}')
     else:
         click.echo('Unsupported credentials provider.')
 
 
 @cli.command()
 @click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.pass_context
-def create(ctx, param_type):
-    cloud_provider = ctx.obj.get('cloud_provider')
+def create(param_type):
+    with open('state/lab_state.json', 'r') as file:
+        data = json.load(file)
+        initialized_cloud_provider = data.get('initialized_cloud_provider')
     if param_type == 'role':
         click.echo("This feature will be available soon")
-    elif param_type == 'cluster' and cloud_provider == "AWS":
-        print(f"Creatin cluster in {cloud_provider}")
+    elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
+        print(f"Creatin cluster in {initialized_cloud_provider} ")
+        os.chdir('../AWS')
+        subprocess.run(['terraform', 'plan'])
+    elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
+        print(f"Creatin cluster in {initialized_cloud_provider} ")
+        os.chdir('../Azure')
+        subprocess.run(['terraform', 'plan'])
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
 
