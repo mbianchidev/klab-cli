@@ -166,4 +166,7 @@ terraform.rc
 # Testing directories
 Testing
 nginx-ingress-helm-operator/
+
+# Credentials for Cloud Providers
+azure_kube_credential.json
 kube_credentials.txt
