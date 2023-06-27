@@ -14,29 +14,18 @@ def cli():
 
 @cli.command()
 @click.option('-cp', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Type of cloud provider')
-@click.option('-profile', type=click.STRING, default='default', help="Operator version", required=False)
-def init(cp, profile):
+def init(cp):
     if cp == 'AWS':
         # Check if the AWS credentials file exists
         aws_credentials_file = os.path.expanduser('~/.aws/credentials')
         if os.path.isfile(aws_credentials_file):
-            # Read the AWS credentials from the file
-            aws_credentials = {}
-            with open(aws_credentials_file, 'r') as f:
-                lines = f.readlines()
-                for line in lines:
-                    line = line.strip()
-                    if line.startswith('aws_access_key_id'):
-                        aws_credentials['aws_access_key_id'] = line.split('=')[1].strip()
-                    elif line.startswith('aws_secret_access_key'):
-                        aws_credentials['aws_secret_access_key'] = line.split('=')[1].strip()
-
-            # Save the credentials to a file
+            # Set the destination file path
             credential_file_path = 'credentials/aws_kube_credential'
-            with open(credential_file_path, 'w') as f:
-                f.write(f"[{profile}]\n")
-                f.write(f"aws_access_key_id = {aws_credentials['aws_access_key_id']}\n")
-                f.write(f"aws_secret_access_key = {aws_credentials['aws_secret_access_key']}\n")
+
+            # Copy the AWS credentials file
+            with open(aws_credentials_file, 'r') as src_file, open(credential_file_path, 'w') as dest_file:
+                dest_file.write(src_file.read())
+
             click.echo(f'Credentials saved to {credential_file_path}')
 
             # Save the state
@@ -48,14 +37,16 @@ def init(cp, profile):
             click.echo(f'State saved to {state_file_path}')
         else:
             click.echo('AWS credentials file not found. Please enter the credentials.')
+            profile = click.prompt('AWS Profile')
             aws_access_key_id = click.prompt('AWS Access Key ID')
             aws_secret_access_key = click.prompt('AWS Secret Access Key', hide_input=True)
 
             # Save the credentials to a file
-            credential_file_path = 'credentials/aws_kube_credential.txt'
+            credential_file_path = 'credentials/aws_kube_credential'
             with open(credential_file_path, 'w') as f:
-                f.write(f"AWS Access Key ID: {aws_access_key_id}\n")
-                f.write(f"AWS Secret Access Key: {aws_secret_access_key}\n")
+                f.write(f"[{profile}]\n")
+                f.write(f"aws_access_key_id = {aws_access_key_id}\n")
+                f.write(f"aws_secret_access_key = {aws_secret_access_key}\n")
             click.echo(f'Credentials saved to {credential_file_path}')
 
             # Save the state
@@ -66,10 +57,6 @@ def init(cp, profile):
                 json.dump(state, f)
             click.echo(f'State saved to {state_file_path}')
 
-            session = boto3.Session(
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key
-            )
     elif cp == 'Azure':
         try:
             # Use Azure CLI to retrieve the currently logged-in Azure account
@@ -99,9 +86,35 @@ def init(cp, profile):
 
 
 @cli.command()
-@click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
+@click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
 @click.option('--region', type=click.STRING, default='eu-west-1', help="Region in which EKS will be deployed", required=False)
-def create(param_type, region):
+def create(name, region):
+    region_file_path = 'credentials/aws_kube_config'
+    with open(region_file_path, 'w') as f:
+        f.write(f"{region}")
+
+    with open('state/lab_state.json', 'r') as file:
+        data = json.load(file)
+        initialized_cloud_provider = data.get('initialized_cloud_provider')
+    if name == 'role':
+        click.echo("This feature will be available soon")
+    elif name == 'cluster' and initialized_cloud_provider == "AWS":
+        print(f"Creating cluster in {initialized_cloud_provider} and {region} region")
+        os.chdir('../AWS')
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
+    elif name == 'cluster' and initialized_cloud_provider == "Azure":
+        print(f"Creating cluster in {initialized_cloud_provider} ")
+        os.chdir('../Azure')
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
+    elif name == 'rbac':
+        click.echo("This feature will be available soon")
+
+
+@cli.command()
+@click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
+@click.argument('name', type=click.STRING, required=True)
+@click.argument('region', type=click.STRING, required=True)
+def destroy(param_type, name, region):
     region_file_path = 'credentials/aws_kube_config'
     with open(region_file_path, 'w') as f:
         f.write(f"{region}")
@@ -112,13 +125,13 @@ def create(param_type, region):
     if param_type == 'role':
         click.echo("This feature will be available soon")
     elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
-        print(f"Creating cluster in {initialized_cloud_provider} and {region} region")
+        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../AWS')
-        subprocess.run(['terraform', 'apply', '-auto-approve'])
+        subprocess.run(['terraform', 'destroy', '-auto-approve'])
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
-        print(f"Creating cluster in {initialized_cloud_provider} ")
-        os.chdir('../Azure')
-        subprocess.run(['terraform', 'apply', '-auto-approve'])
+        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
+        os.chdir('../AWS')
+        subprocess.run(['terraform', 'destroy', '-auto-approve'])
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
 
@@ -199,6 +212,20 @@ def delete(type, product, version):
 @cli.command()
 def info():
     return "Hello"
+
+
+@cli.command()
+@click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
+@click.argument('cluster', type=click.STRING, required=True)
+@click.argument('region', type=click.STRING,  required=True)
+def use(name, cluster, region):
+    with open('state/lab_state.json', 'r') as file:
+        data = json.load(file)
+        initialized_cloud_provider = data.get('initialized_cloud_provider')
+    if initialized_cloud_provider == "AWS":
+        subprocess.run(["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster])
+    elif initialized_cloud_provider == "Azure":
+        print("Will be updated soon")
 
 
 if __name__ == '__main__':
