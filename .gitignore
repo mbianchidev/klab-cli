@@ -167,5 +167,5 @@ terraform.rc
 Testing
 
 nginx-ingress-helm-operator
-credentials
 state
+credentials/
