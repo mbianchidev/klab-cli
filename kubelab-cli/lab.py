@@ -14,11 +14,7 @@ def cli():
 
 @cli.command()
 @click.option('-cp', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Type of cloud provider')
-@click.pass_context
-def init(ctx, cp):
-    ctx.obj = {
-        'cloud_provider': cp
-    }
+def init(cp):
     if cp == 'AWS':
         # Check if the AWS credentials file exists
         aws_credentials_file = os.path.expanduser('~/.aws/credentials')
@@ -35,10 +31,10 @@ def init(ctx, cp):
                         aws_credentials['aws_secret_access_key'] = line.split('=')[1].strip()
 
             # Save the credentials to a file
-            credential_file_path = 'credentials/aws_kube_credential.txt'
+            credential_file_path = 'credentials/aws_kube_credential'
             with open(credential_file_path, 'w') as f:
-                f.write(f"AWS Access Key ID: {aws_credentials['aws_access_key_id']}\n")
-                f.write(f"AWS Secret Access Key: {aws_credentials['aws_secret_access_key']}\n")
+                f.write(f"aws_access_key_id = {aws_credentials['aws_access_key_id']}\n")
+                f.write(f"aws_secret_access_key = {aws_credentials['aws_secret_access_key']}\n")
             click.echo(f'Credentials saved to {credential_file_path}')
 
             # Save the state
@@ -109,13 +105,13 @@ def create(param_type):
     if param_type == 'role':
         click.echo("This feature will be available soon")
     elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
-        print(f"Creatin cluster in {initialized_cloud_provider} ")
+        print(f"Creating cluster in {initialized_cloud_provider} ")
         os.chdir('../AWS')
-        subprocess.run(['terraform', 'plan'])
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
-        print(f"Creatin cluster in {initialized_cloud_provider} ")
+        print(f"Creating cluster in {initialized_cloud_provider} ")
         os.chdir('../Azure')
-        subprocess.run(['terraform', 'plan'])
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
 
@@ -191,6 +187,11 @@ def delete(type, product, version):
         subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
     else:
         print('Invalid configuration.')
+
+
+@cli.command()
+def info():
+    return "Hello"
 
 
 if __name__ == '__main__':
