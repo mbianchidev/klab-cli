@@ -1,3 +1,8 @@
+provider "aws" {
+  shared_credentials_files = ["../kubelab-cli/credentials/aws_kube_credential"]
+  region = file("../kubelab-cli/credentials/aws_kube_config")
+}
+
 # module "CodePipeline" {
 #   source = "./CodePipeline"
 #   github_oauth_token = "Your GitHub oauth token"
