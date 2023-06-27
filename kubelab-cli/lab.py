@@ -102,16 +102,23 @@ def init(ctx, cp):
 
 @cli.command()
 @click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.pass_context
-def create(ctx, param_type):
-    cloud_provider = ctx.obj.get('cloud_provider')
+@click.option('--region', type=click.STRING, default='eu-west-1', help="Region in which EKS will be deployed", required=False)
+def create(param_type, region):
+    with open('state/lab_state.json', 'r') as file:
+        data = json.load(file)
+        initialized_cloud_provider = data.get('initialized_cloud_provider')
     if param_type == 'role':
         click.echo("This feature will be available soon")
-    elif param_type == 'cluster' and cloud_provider == "AWS":
-        print(f"Creatin cluster in {cloud_provider}")
+    elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
+        print(f"Creating cluster in {initialized_cloud_provider} and {region} region")
+        os.chdir('../AWS')
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
+    elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
+        print(f"Creating cluster in {initialized_cloud_provider} ")
+        os.chdir('../Azure')
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
-
 
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
