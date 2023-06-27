@@ -1,8 +1,3 @@
-provider "azurerm" {
-  features {}
-}
-
-
 resource "azurerm_kubernetes_cluster" "k8s" {
   name                = var.cluster_name
   location            = var.resource_group_location
