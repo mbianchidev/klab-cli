@@ -165,7 +165,14 @@ terraform.rc
 .terraform
 # Testing directories
 Testing
+nginx-ingress-helm-operator/
 
-nginx-ingress-helm-operator
+# Credentials for Cloud Providers
+azure_kube_credential.json
+aws_kube_credential.txt
+kube_credentials.txt
+
+# State for lab CLI
+lab_state.json
 state
 credentials/
