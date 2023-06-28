@@ -196,7 +196,6 @@ def update(type, product, version):
     else:
         print('Invalid configuration.')
 
-
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
@@ -220,22 +219,33 @@ def delete(type, product, version):
 
 
 @cli.command()
-def info():
-    return "Hello"
-
-
-@cli.command()
 @click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.argument('cluster', type=click.STRING, required=True)
-@click.argument('region', type=click.STRING,  required=True)
-def use(name, cluster, region):
+@click.argument('cluster', type=click.STRING)
+@click.option('--region', type=click.STRING, help='Region of the cluster')
+@click.option('--resource-group', type=click.STRING, help='Resource group of the cluster')
+def use(name, cluster, region, resource_group):
     with open('state/lab_state.json', 'r') as file:
         data = json.load(file)
         initialized_cloud_provider = data.get('initialized_cloud_provider')
+
     if initialized_cloud_provider == "AWS":
+        if region is None:
+            print("Region is required for AWS, use --region YOUR-CLUSTER-REGION while running the command.")
+            return
         subprocess.run(["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster])
-    if initialized_cloud_provider == "Azure":
-        print("Will be updated soon")
+    elif initialized_cloud_provider == "Azure":
+        if resource_group is None:
+            print("Resource group is required for Azure, use --resource-group YOUR-RESOURCE-GROUP while running the command.")
+            return
+        subprocess.run(["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster, "--overwrite-existing"])
+    else:
+        print("Unsupported cloud provider.")
+        return
+
+
+@cli.command()
+def info():
+    return "Hello"
 
 
 if __name__ == '__main__':
