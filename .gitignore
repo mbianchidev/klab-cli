@@ -174,5 +174,5 @@ kube_credentials.txt
 
 # State for lab CLI
 lab_state.json
-state
+state/
 credentials/

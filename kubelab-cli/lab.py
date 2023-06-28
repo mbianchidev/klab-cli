@@ -34,6 +34,9 @@ def init(cp):
             with open(state_file_path, 'w') as f:
                 json.dump(state, f)
             click.echo(f'State saved to {state_file_path}')
+            print("Initalizing terraform..")
+            os.chdir('../AWS')
+            subprocess.run(['terraform', 'init'])
         else:
             click.echo('AWS credentials file not found. Please enter the credentials.')
             profile = click.prompt('AWS Profile')
@@ -55,7 +58,9 @@ def init(cp):
             with open(state_file_path, 'w') as f:
                 json.dump(state, f)
             click.echo(f'State saved to {state_file_path}')
-
+            print("Initalizing terraform..")
+            os.chdir('../AWS')
+            subprocess.run(['terraform', 'init'])
     elif cp == 'Azure':
         try:
             # Use Azure CLI to retrieve the currently logged-in Azure account
@@ -76,6 +81,9 @@ def init(cp):
                 with open(state_file_path, 'w') as f:
                     json.dump(state, f)
                 click.echo(f'State saved to {state_file_path}')
+                print("Initalizing terraform..")
+                os.chdir('../Azure')
+                subprocess.run(['terraform', 'init'])
             else:
                 click.echo('Azure login failed. Please make sure Azure CLI is installed and logged in.')
         except Exception as e:
@@ -129,7 +137,7 @@ def destroy(param_type, name, region):
         subprocess.run(['terraform', 'destroy', '-auto-approve'])
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
         print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
-        os.chdir('../AWS')
+        os.chdir('../Azure')
         subprocess.run(['terraform', 'destroy', '-auto-approve'])
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
