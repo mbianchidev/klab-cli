@@ -20,7 +20,7 @@ def init(cp):
         if os.path.isfile(aws_credentials_file):
             # Set the destination file path
             credential_file_path = 'credentials/aws_kube_credential'
-
+            os.makedirs(os.path.dirname(credential_file_path), exist_ok=True)
             # Copy the AWS credentials file
             with open(aws_credentials_file, 'r') as src_file, open(credential_file_path, 'w') as dest_file:
                 dest_file.write(src_file.read())
@@ -45,6 +45,7 @@ def init(cp):
 
             # Save the credentials to a file
             credential_file_path = 'credentials/aws_kube_credential'
+            os.makedirs(os.path.dirname(credential_file_path), exist_ok=True)
             with open(credential_file_path, 'w') as f:
                 f.write(f"[{profile}]\n")
                 f.write(f"aws_access_key_id = {aws_access_key_id}\n")
@@ -70,6 +71,8 @@ def init(cp):
 
                 # Save the credentials to a file
                 credential_file_path = 'credentials/azure_kube_credential.json'
+                os.makedirs(os.path.dirname(credential_file_path), exist_ok=True)
+
                 with open(credential_file_path, 'w') as f:
                     f.write(output)
                 click.echo(f'Credentials saved to {credential_file_path}')
