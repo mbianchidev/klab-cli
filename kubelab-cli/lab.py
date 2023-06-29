@@ -245,7 +245,8 @@ def use(name, cluster, region, resource_group):
 
 @cli.command()
 def info():
-    return "Hello"
+    print("Information about the kubernetes are from cnquery lib")
+    subprocess.run(['cnquery', 'shell', 'k8s'])
 
 
 if __name__ == '__main__':
