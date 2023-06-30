@@ -144,10 +144,17 @@ def create(name, region):
         print(f"Creating cluster in {initialized_cloud_provider} ")
         os.chdir('../Azure')
         subprocess.run(['terraform', 'apply', '-auto-approve'])
+    elif name == 'cluster' and initialized_cloud_provider == "GCP":
+        print(f"Creating cluster in {initialized_cloud_provider} ")
+        os.chdir('../GCP')
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
     elif name == 'rbac':
         click.echo("This feature will be available soon")
 
 
+# There is a bug for the destroy function
+# This function currently destroys everything for the Cloud provider, not only the cluster.
+# You can basicly run bash lab destroy cluster a b // It will destroy everything for the provider that you are initialized.
 @cli.command()
 @click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
 @click.argument('name', type=click.STRING, required=True)
@@ -169,6 +176,10 @@ def destroy(param_type, name, region):
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
         print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../Azure')
+        subprocess.run(['terraform', 'destroy', '-auto-approve'])
+    elif param_type == 'cluster' and initialized_cloud_provider == "GCP":
+        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
+        os.chdir('../GCP')
         subprocess.run(['terraform', 'destroy', '-auto-approve'])
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
@@ -224,6 +235,7 @@ def update(type, product, version):
     else:
         print('Invalid configuration.')
 
+
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
@@ -266,6 +278,11 @@ def use(name, cluster, region, resource_group):
             print("Resource group is required for Azure, use --resource-group YOUR-RESOURCE-GROUP while running the command.")
             return
         subprocess.run(["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster, "--overwrite-existing"])
+    elif initialized_cloud_provider == "GCP":
+        if region is None:
+            print("Region is required for GCP, use --region YOUR-CLUSTER-REGION while running the command.")
+            return
+        subprocess.run(["gcloud", "container", "clusters", "get-credentials", cluster, "--region=" + region])
     else:
         print("Unsupported cloud provider.")
         return
