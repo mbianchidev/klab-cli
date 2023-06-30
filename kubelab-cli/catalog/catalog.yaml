@@ -1,0 +1,9 @@
+- product: nginx
+  default_version: 1.5.0
+  default_type: deployment
+  available_types:
+    - deployment
+    - operator
+  installed_version: 1.5.0
+  installed_type: operator
+
