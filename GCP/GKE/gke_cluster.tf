@@ -5,8 +5,8 @@ module "gke" {
   regional                   = var.gke_regional
   region                     = var.region
   zones                      = var.gke_zones
-  network                    = module.gcp-network.network_name
-  subnetwork                 = module.gcp-network.subnets_names[0]
+  network                    = var.network
+  subnetwork                 = var.subnetwork
   ip_range_pods              = var.gke_ip_range_pods_name
   ip_range_services          = var.gke_ip_range_services_name
   horizontal_pod_autoscaling = var.gke_horizontal_pod_autoscaling
