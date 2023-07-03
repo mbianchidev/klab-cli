@@ -147,40 +147,69 @@ def create(name, region):
     elif name == 'cluster' and initialized_cloud_provider == "GCP":
         print(f"Creating cluster in {initialized_cloud_provider} ")
         os.chdir('../GCP')
-        subprocess.run(['terraform', 'apply', '-auto-approve'])
+        network_result = subprocess.run(['terraform', 'apply', '-target=module.gcp-network', '-auto-approve'])
+        if network_result.returncode == 0:
+            print("Networking deployment successful.")
+        else:
+            print("Something went wrong, Networking have not been deployed.")
+        gke_cluster_result = subprocess.run(['terraform', 'apply', '-target=module.GKE', '-auto-approve'])
+        if gke_cluster_result.returncode == 0:
+            print("Kubernetes cluster deployment successful.")
+        else:
+            print("Something went wrong, Kubernetes cluster have not been deployed.")
+            
     elif name == 'rbac':
         click.echo("This feature will be available soon")
 
 
-# There is a bug for the destroy function
-# This function currently destroys everything for the Cloud provider, not only the cluster.
-# You can basicly run bash lab destroy cluster a b // It will destroy everything for the provider that you are initialized.
 @cli.command()
 @click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.argument('name', type=click.STRING, required=True)
-@click.argument('region', type=click.STRING, required=True)
-def destroy(param_type, name, region):
-    region_file_path = 'credentials/aws_kube_config'
-    with open(region_file_path, 'w') as f:
-        f.write(f"{region}")
-
+# @click.argument('name', type=click.STRING, required=True)
+# @click.argument('region', type=click.STRING, required=True)
+def destroy(param_type):
     with open('state/lab_state.json', 'r') as file:
         data = json.load(file)
         initialized_cloud_provider = data.get('initialized_cloud_provider')
     if param_type == 'role':
         click.echo("This feature will be available soon")
     elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
-        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../AWS')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
+        subprocess.run(['terraform', 'plan', '-destroy', '-target=module.EKS'])
+        confirmation = input("Are you sure you want to destroy the cluster? (yes/no): ").lower()
+
+        if confirmation == 'yes':
+            subprocess.run(['terraform', 'destroy', '-target=module.EKS', '-auto-approve'])
+            print("The cluster has been destroyed.")
+        elif confirmation == 'no':
+            print("The destruction of the cluster has been canceled.")
+        else:
+            print("Invalid response. Please provide a valid response (yes/no).")
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
-        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../Azure')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
+        subprocess.run(['terraform', 'plan', '-destroy', '-target=module.AKS'])
+        confirmation = input("Are you sure you want to destroy the cluster? (yes/no): ").lower()
+
+        if confirmation == 'yes':
+            
+            subprocess.run(['terraform', 'destroy', '-target=module.AKS', '-auto-approve'])
+            print("The cluster has been destroyed.")
+        elif confirmation == 'no':
+            print("The destruction of the cluster has been canceled.")
+        else:
+            print("Invalid response. Please provide a valid response (yes/no).")
     elif param_type == 'cluster' and initialized_cloud_provider == "GCP":
-        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../GCP')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
+        subprocess.run(['terraform', 'plan', '-destroy', '-target=module.GKE'])
+        confirmation = input("Are you sure you want to destroy the cluster? (yes/no): ").lower()
+
+        if confirmation == 'yes':
+            subprocess.run(['terraform', 'destroy', '-target=module.GKE', '-auto-approve'])
+            print("The cluster has been destroyed.")
+        elif confirmation == 'no':
+            print("The destruction of the cluster has been canceled.")
+        else:
+            print("Invalid response. Please provide a valid response (yes/no).")
+
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
 
