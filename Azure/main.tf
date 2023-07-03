@@ -21,7 +21,7 @@ provider "azurerm" {
 #   akspodssubnet_id        = module.VNet.akspodssubnet
 # }
 
-module "AKS-Microsoft-Managed" {
+module "AKS" {
   source              = "./AKS-Microsoft-Managed"
   resource_group_name = "kubelab-testing"
   prefix              = "testing"
