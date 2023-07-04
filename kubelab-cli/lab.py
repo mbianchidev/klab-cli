@@ -167,7 +167,8 @@ def create(name, region):
 @click.argument('param_type', type=click.Choice(['cluster']))
 @click.option('--name', type=click.STRING, help='What is the cluster named as?')
 @click.option('--region', type=click.STRING, help='Where is the cluster located?')
-def destroy(param_type, name, region):
+@click.option('--resource_group', type=click.STRING, help='What is the resource group of the cluster?')
+def destroy(param_type, name, region, resource_group):
     with open('state/lab_state.json', 'r') as file:
         data = json.load(file)
         initialized_cloud_provider = data.get('initialized_cloud_provider')
@@ -262,18 +263,54 @@ def destroy(param_type, name, region):
         else:
             print(f"The entry for the destroy command is invalid, run: bash lab destroy --help")
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
-        os.chdir('../Azure')
-        subprocess.run(['terraform', 'plan', '-destroy', '-target=module.AKS'])
-        confirmation = input("Are you sure you want to destroy the cluster? (yes/no): ").lower()
+        if name is None and resource_group is None:
+            os.chdir('../Azure')
+            subprocess.run(['terraform', 'plan', '-destroy', '-target=module.AKS'])
 
-        if confirmation == 'yes':
-            
-            subprocess.run(['terraform', 'destroy', '-target=module.AKS', '-auto-approve'])
-            print("The cluster has been destroyed.")
-        elif confirmation == 'no':
-            print("The destruction of the cluster has been canceled.")
+            print("You have not selected a specific cluster name and cluster resource group.")
+            confirmation = input("Are you sure you want to destroy the currently used Azure cluster? (yes/no): ").lower()
+            if confirmation == 'yes':
+                try:
+                    subprocess.check_call(['terraform', 'destroy', '-target=module.AKS', '-auto-approve'])
+                    print("The cluster has been destroyed.")
+                except subprocess.CalledProcessError:
+                    print("Error occurred during Terraform destroy. Please check the command and try again.")
+                    return
+            elif confirmation == 'no':
+                print("The destruction of the cluster has been canceled.")
+            else:
+                print("Invalid response. Please provide a valid response (yes/no).")
+        # If you specify name and resource_group
+        elif name is not None and resource_group is not None:
+            try:
+                describe_command = f"az aks show --name {name} --resource-group {resource_group} --query provisioningState --output tsv"
+                result = subprocess.check_output(describe_command, stderr=subprocess.STDOUT, shell=True)
+                provisioning_state = result.decode().strip()
+
+                if provisioning_state == "Succeeded":
+                    print(f"The AKS cluster named {name} in resource group {resource_group} exists.")
+                    try:
+                        confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                        if confirmation == 'yes':
+                            delete_command = f"az aks delete --name {name} --resource-group {resource_group} --yes"
+                            subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
+                            print(f"The AKS cluster named {name} in resource group {resource_group} has been deleted successfully.")
+                        elif confirmation == 'no':
+                            print("The destruction of the cluster has been canceled.")
+                        else:
+                            print("Invalid response. Please provide a valid response (yes/no).")
+
+                    except subprocess.CalledProcessError as e:
+                        print("Error occurred during 'az aks delete' command. Please check the command and try again.")
+                else:
+                    print(f"The AKS cluster named {name} in resource group {resource_group} does not exist.")
+                    return
+
+            except subprocess.CalledProcessError as e:
+                print("Error occurred during 'az aks show' command. Please check the command and try again.")
+
         else:
-            print("Invalid response. Please provide a valid response (yes/no).")
+            print(f"The entry for the destroy command is invalid, run: bash lab destroy --help")
     # Destroy cluster that is currently in use with the GCP provider
     elif param_type == 'cluster' and initialized_cloud_provider == "GCP":
         os.chdir('../GCP')
