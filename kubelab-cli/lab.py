@@ -4,6 +4,7 @@ import click
 import os
 import subprocess
 import json
+import time
 
 
 @click.group()
@@ -163,27 +164,103 @@ def create(name, region):
 
 
 @cli.command()
-@click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
-# @click.argument('name', type=click.STRING, required=True)
-# @click.argument('region', type=click.STRING, required=True)
-def destroy(param_type):
+@click.argument('param_type', type=click.Choice(['cluster']))
+@click.option('--name', type=click.STRING, help='What is the cluster named as?')
+@click.option('--region', type=click.STRING, help='Where is the cluster located?')
+def destroy(param_type, name, region):
     with open('state/lab_state.json', 'r') as file:
         data = json.load(file)
         initialized_cloud_provider = data.get('initialized_cloud_provider')
-    if param_type == 'role':
-        click.echo("This feature will be available soon")
-    elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
-        os.chdir('../AWS')
-        subprocess.run(['terraform', 'plan', '-destroy', '-target=module.EKS'])
-        confirmation = input("Are you sure you want to destroy the cluster? (yes/no): ").lower()
+    if param_type == 'cluster' and initialized_cloud_provider == "AWS":
+        # If you don't specify name and region
+        if name is None and region is None:
+            os.chdir('../AWS')
+            subprocess.run(['terraform', 'plan', '-destroy', '-target=module.EKS'])
 
-        if confirmation == 'yes':
-            subprocess.run(['terraform', 'destroy', '-target=module.EKS', '-auto-approve'])
-            print("The cluster has been destroyed.")
-        elif confirmation == 'no':
-            print("The destruction of the cluster has been canceled.")
+            print("You have not selected a specific cluster name and cluster region.")
+            confirmation = input("Are you sure you want to destroy the currently used AWS cluster? (yes/no): ").lower()
+            if confirmation == 'yes':
+                try:
+                    subprocess.check_call(['terraform', 'destroy', '-target=module.EKS', '-auto-approve'])
+                    print("The cluster has been destroyed.")
+                except subprocess.CalledProcessError:
+                    print("Error occurred during Terraform destroy. Please check the command and try again.")
+                    return
+            elif confirmation == 'no':
+                print("The destruction of the cluster has been canceled.")
+            else:
+                print("Invalid response. Please provide a valid response (yes/no).")
+        # If you specify name and region
+        elif name is not None and region is not None:
+            print(f"You have selected to destroy cluster: {name} that is located in: {region}")
+            check_command = f"aws eks describe-cluster --name {name} --region {region}"
+            try:
+                subprocess.check_output(check_command, stderr=subprocess.STDOUT, shell=True)
+            except subprocess.CalledProcessError as e:
+                if "ResourceNotFoundException" in e.output.decode():
+                    print(f"The EKS cluster named {name} in region {region} does not exist.")
+                else:
+                    print("Error occurred during describe-cluster command. Please check the command and try again.")
+                return
+
+            confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+            if confirmation == 'yes':
+                check_command = f"aws eks list-nodegroups --cluster-name {name} --region {region}"
+
+                try:
+                    check_output = subprocess.check_output(check_command, stderr=subprocess.STDOUT, shell=True)
+                except subprocess.CalledProcessError:
+                    print("Error occurred during list-nodegroups command. Please check the command and try again.")
+                    return
+
+                if check_output:
+                    node_groups = json.loads(check_output)['nodegroups']
+                    
+                    for node_group in node_groups:
+                        check_command = f"aws eks list-nodegroups --cluster-name {name} --region {region}"
+
+                        delete_node_group_command = f"aws eks delete-nodegroup --cluster-name {name} --nodegroup-name {node_group} --region {region}"
+                        print(f"Node group {node_group} is being destroyed..")
+                        subprocess.Popen(delete_node_group_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True).communicate() 
+
+                        while True:
+                            # Run the AWS CLI command to list node groups
+                            check_command = f"aws eks list-nodegroups --cluster-name {name} --region {region}"
+                            result = subprocess.run(check_command, shell=True, capture_output=True, text=True)
+
+                            if result.returncode == 0:
+                                # Parse the JSON output
+                                output = json.loads(result.stdout)
+
+                                if "nodegroups" in output and len(output["nodegroups"]) == 0:
+                                    print(f"The Node Groups of the {name} cluster have been destroyed.")
+                                    break
+
+                            else:
+                                print("An error occurred while executing the command.")
+                delete_command = f"aws eks delete-cluster --name {name} --region {region}"
+                print(f"The EKS cluster {name} in region {region} is being destroyed..")
+                subprocess.check_call(delete_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
+
+                while True:
+                    check_cluster_command = f"aws eks describe-cluster --name {name} --region {region}"
+                    try:
+                        check_output = subprocess.check_output(check_cluster_command, stderr=subprocess.STDOUT, shell=True)
+                    except subprocess.CalledProcessError as e:
+                        if "ResourceNotFoundException" in e.output.decode():
+                            print(f"The EKS cluster named {name} in region {region} has been destroyed.")
+                            break
+                        else:
+                            print("Error occurred during describe-cluster command. Please check the command and try again.")
+                            return
+
+            elif confirmation == 'no':
+                print("The destruction of the cluster has been canceled.")
+            else:
+                print("Invalid response. Please provide a valid response (yes/no).")
+        # Destroy cluster that is currently in use with the Azure provider
         else:
-            print("Invalid response. Please provide a valid response (yes/no).")
+            print(f"The entry for the destroy command is invalid, run: bash lab destroy --help")
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
         os.chdir('../Azure')
         subprocess.run(['terraform', 'plan', '-destroy', '-target=module.AKS'])
@@ -197,6 +274,7 @@ def destroy(param_type):
             print("The destruction of the cluster has been canceled.")
         else:
             print("Invalid response. Please provide a valid response (yes/no).")
+    # Destroy cluster that is currently in use with the GCP provider
     elif param_type == 'cluster' and initialized_cloud_provider == "GCP":
         os.chdir('../GCP')
         subprocess.run(['terraform', 'plan', '-destroy', '-target=module.GKE'])
@@ -209,9 +287,8 @@ def destroy(param_type):
             print("The destruction of the cluster has been canceled.")
         else:
             print("Invalid response. Please provide a valid response (yes/no).")
-
-    elif param_type == 'rbac':
-        click.echo("This feature will be available soon")
+    else:
+        print("Please provide a valid cloud provider (AWS, Azure or GCP)")
 
 
 @cli.command()
