@@ -4,6 +4,7 @@ import click
 import os
 import subprocess
 import json
+import time
 
 
 @click.group()
@@ -139,15 +140,33 @@ def create(name, region):
     elif name == 'cluster' and initialized_cloud_provider == "AWS":
         print(f"Creating cluster in {initialized_cloud_provider} and {region} region")
         os.chdir('../AWS')
-        subprocess.run(['terraform', 'apply', '-auto-approve'])
+        process = subprocess.Popen(['terraform', 'apply', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        click.echo("The cluster will be created in 10 minutes. Please wait...")
+        exit_code = process.wait()
+        if exit_code == 0:
+            click.echo("Cluster creation completed successfully!")
+        else:
+            click.echo("Cluster creation failed.")
     elif name == 'cluster' and initialized_cloud_provider == "Azure":
         print(f"Creating cluster in {initialized_cloud_provider} ")
         os.chdir('../Azure')
-        subprocess.run(['terraform', 'apply', '-auto-approve'])
+        process = subprocess.Popen(['terraform', 'apply', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        click.echo("The cluster will be created in 15 minutes. Please wait...")
+        exit_code = process.wait()
+        if exit_code == 0:
+            click.echo("Cluster creation completed successfully!")
+        else:
+            click.echo("Cluster creation failed.")
     elif name == 'cluster' and initialized_cloud_provider == "GCP":
         print(f"Creating cluster in {initialized_cloud_provider} ")
         os.chdir('../GCP')
-        subprocess.run(['terraform', 'apply', '-auto-approve'])
+        process = subprocess.run(['terraform', 'apply', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        click.echo("The cluster will be created in 15 minutes. Please wait...")
+        exit_code = process.wait()
+        if exit_code == 0:
+            click.echo("Cluster creation completed successfully!")
+        else:
+            click.echo("Cluster creation failed.")
     elif name == 'rbac':
         click.echo("This feature will be available soon")
 
@@ -172,15 +191,33 @@ def destroy(param_type, name, region):
     elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
         print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../AWS')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
+        process = subprocess.Popen(['terraform', 'destroy', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        click.echo("The cluster will be destroyed in 10 minutes. Please wait...")
+        exit_code = process.wait()
+        if exit_code == 0:
+            click.echo("Cluster destroying completed successfully!")
+        else:
+            click.echo("Cluster destroying failed.")
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
         print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../Azure')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
+        process = subprocess.Popen(['terraform', 'destroy', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        click.echo("The cluster will be destroyed in 15 minutes. Please wait...")
+        exit_code = process.wait()
+        if exit_code == 0:
+            click.echo("Cluster destroying completed successfully!")
+        else:
+            click.echo("Cluster destroying failed.")
     elif param_type == 'cluster' and initialized_cloud_provider == "GCP":
         print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../GCP')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
+        process = subprocess.Popen(['terraform', 'destroy', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        click.echo("The cluster will be destroyed in 15 minutes. Please wait...")
+        exit_code = process.wait()
+        if exit_code == 0:
+            click.echo("Cluster destroying completed successfully!")
+        else:
+            click.echo("Cluster destroying failed.")
     elif param_type == 'rbac':
         click.echo("This feature will be available soon")
 
