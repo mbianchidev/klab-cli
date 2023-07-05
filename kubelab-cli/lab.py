@@ -165,10 +165,11 @@ def create(name, region):
 
 @cli.command()
 @click.argument('param_type', type=click.Choice(['cluster']))
-@click.option('--name', type=click.STRING, help='What is the cluster named as?')
-@click.option('--region', type=click.STRING, help='Where is the cluster located?')
-@click.option('--resource_group', type=click.STRING, help='What is the resource group of the cluster?')
-def destroy(param_type, name, region, resource_group):
+@click.option('--name', type=click.STRING, help='What is the cluster named as? (AWS, Azure, GCP)')
+@click.option('--region', type=click.STRING, help='Where is the cluster located? (AWS)')
+@click.option('--resource_group', type=click.STRING, help='What is the resource group of the cluster? (Azure)')
+@click.option('--zone', type=click.STRING, help='Where is the cluster located? (GCP)')
+def destroy(param_type, name, region, resource_group, zone):
     with open('state/lab_state.json', 'r') as file:
         data = json.load(file)
         initialized_cloud_provider = data.get('initialized_cloud_provider')
@@ -313,19 +314,56 @@ def destroy(param_type, name, region, resource_group):
             print(f"The entry for the destroy command is invalid, run: bash lab destroy --help")
     # Destroy cluster that is currently in use with the GCP provider
     elif param_type == 'cluster' and initialized_cloud_provider == "GCP":
-        os.chdir('../GCP')
-        subprocess.run(['terraform', 'plan', '-destroy', '-target=module.GKE'])
-        confirmation = input("Are you sure you want to destroy the cluster? (yes/no): ").lower()
+        if name is None and zone is None:
+            os.chdir('../GCP')
+            subprocess.run(['terraform', 'plan', '-destroy', '-target=module.GKE'])
 
-        if confirmation == 'yes':
-            subprocess.run(['terraform', 'destroy', '-target=module.GKE', '-auto-approve'])
-            print("The cluster has been destroyed.")
-        elif confirmation == 'no':
-            print("The destruction of the cluster has been canceled.")
-        else:
-            print("Invalid response. Please provide a valid response (yes/no).")
+            print("You have not selected a specific cluster name and cluster resource group.")
+            confirmation = input("Are you sure you want to destroy the currently used GKE cluster? (yes/no): ").lower()
+            if confirmation == 'yes':
+                try:
+                    subprocess.check_call(['terraform', 'destroy', '-target=module.GKE', '-auto-approve'])
+                    print("The cluster has been destroyed.")
+                except subprocess.CalledProcessError:
+                    print("Error occurred during Terraform destroy. Please check the command and try again.")
+                    return
+            elif confirmation == 'no':
+                print("The destruction of the cluster has been canceled.")
+            else:
+                print("Invalid response. Please provide a valid response (yes/no).")
+        # If you specify name and resource_group
+        if name is not None and zone is not None:
+            try:
+                describe_command = f"gcloud container clusters describe {name} --zone {zone} --format='value(status)'"
+                result = subprocess.check_output(describe_command, stderr=subprocess.STDOUT, shell=True)
+                provisioning_state = result.decode().strip()
+
+                if provisioning_state == "RUNNING":
+                    print(f"The GKE cluster named {name} in zone {zone} exists.")
+                    try:
+                        confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                        if confirmation == 'yes':
+                            delete_command = f"gcloud container clusters delete {name} --zone {zone} --quiet"
+                            subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
+                            print(f"The GKE cluster named {name} in zone {zone} has been deleted successfully.")
+                        elif confirmation == 'no':
+                            print("The destruction of the cluster has been canceled.")
+                        else:
+                            print("Invalid response. Please provide a valid response (yes/no).")
+
+                    except subprocess.CalledProcessError as e:
+                        print("Error occurred during 'gcloud container clusters delete' command. Please check the command and try again.")
+                else:
+                    print(f"The GKE cluster named {name} in zone {zone} does not exist.")
+                    return
+
+            except subprocess.CalledProcessError as e:
+                print("Error occured during 'lab destroy' command.")
+                print(f"The specified {name} cluster located in {zone} was not found.")
+                print("For more information please run 'lab destroy --help'.")
+
     else:
-        print("Please provide a valid cloud provider (AWS, Azure or GCP)")
+        print(f"The entry for the destroy command is invalid, run: bash lab destroy --help")
 
 
 @cli.command()
