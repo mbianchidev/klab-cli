@@ -35,3 +35,11 @@ module "EKS" {
 # output "api_gateway_url" {
 #   value = module.API-Gateway.api_gateway_url
 # }
+
+output "cluster_name" {
+  value = module.EKS.cluster_name
+}
+
+output "cluster_region" {
+  value = file("../kubelab-cli/credentials/aws_kube_config")
+}
