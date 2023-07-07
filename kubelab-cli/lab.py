@@ -5,7 +5,8 @@ import os
 import subprocess
 import json
 import time
-
+import yaml
+import shutil
 
 @click.group()
 def cli():
@@ -13,154 +14,171 @@ def cli():
 
 
 @cli.command()
-@click.option('-cp', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Type of cloud provider')
-def init(cp):
-    if cp == 'AWS':
-        # Check if the AWS credentials file exists
-        aws_credentials_file = os.path.expanduser('~/.aws/credentials')
+def init():
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    credentials_dir = os.path.join(script_dir, 'credentials')
+    os.makedirs(credentials_dir, exist_ok=True)
+
+    # Check if AWS CLI is installed and configured
+    try:
+        subprocess.run(['aws', '--version'], check=True, capture_output=True, text=True)
+        aws_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
+
         if os.path.isfile(aws_credentials_file):
-            # Set the destination file path
-            credential_file_path = 'credentials/aws_kube_credential'
-            os.makedirs(os.path.dirname(credential_file_path), exist_ok=True)
-            # Copy the AWS credentials file
-            with open(aws_credentials_file, 'r') as src_file, open(credential_file_path, 'w') as dest_file:
-                dest_file.write(src_file.read())
+            os.remove(aws_credentials_file)
 
-            click.echo(f'Credentials saved to {credential_file_path}')
+        shutil.copy(os.path.expanduser('~/.aws/credentials'), aws_credentials_file)
 
-            # Save the state
-            state = {'initialized_cloud_provider': 'AWS'}
-            state_file_path = 'state/lab_state.json'
-            os.makedirs(os.path.dirname(state_file_path), exist_ok=True)  # Create 'state' folder if it doesn't exist
-            with open(state_file_path, 'w') as f:
-                json.dump(state, f)
-            click.echo(f'State saved to {state_file_path}')
-            print("Initalizing terraform..")
-            os.chdir('../AWS')
+        click.echo(f'Credentials saved to {aws_credentials_file}')
+        print("Initializing Terraform...")
+        os.chdir('../AWS')
+        subprocess.run(['terraform', 'init'])
+    except subprocess.CalledProcessError:
+        click.echo('AWS CLI is not installed. Please install and configure it before proceeding.')
+
+    # Check if Azure CLI is installed and configured
+    try:
+        subprocess.run(['az', '--version'], check=True, capture_output=True, text=True)
+        result = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
+        if result.returncode == 0:
+            output = result.stdout.strip()
+            azure_credentials_file = os.path.join(credentials_dir, 'azure_kube_credential.json')
+
+            with open(azure_credentials_file, 'w') as f:
+                f.write(output)
+
+            click.echo(f'Credentials saved to {azure_credentials_file}')
+            print("Initializing Terraform...")
+            os.chdir('../Azure')
             subprocess.run(['terraform', 'init'])
         else:
-            click.echo('AWS credentials file not found. Please enter the credentials.')
-            profile = click.prompt('AWS Profile')
-            aws_access_key_id = click.prompt('AWS Access Key ID')
-            aws_secret_access_key = click.prompt('AWS Secret Access Key', hide_input=True)
+            click.echo('Azure login failed. Please make sure Azure CLI is installed and logged in.')
+    except subprocess.CalledProcessError:
+        click.echo('Azure CLI is not installed. Please install and configure it before proceeding.')
 
-            # Save the credentials to a file
-            credential_file_path = 'credentials/aws_kube_credential'
-            os.makedirs(os.path.dirname(credential_file_path), exist_ok=True)
-            with open(credential_file_path, 'w') as f:
-                f.write(f"[{profile}]\n")
-                f.write(f"aws_access_key_id = {aws_access_key_id}\n")
-                f.write(f"aws_secret_access_key = {aws_secret_access_key}\n")
-            click.echo(f'Credentials saved to {credential_file_path}')
+    # Check if gcloud CLI is installed and configured
+    try:
+        subprocess.run(['gcloud', '--version'], check=True, capture_output=True, text=True)
+        gcp_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential.json')
 
-            # Save the state
-            state = {'initialized_cloud_provider': 'AWS'}
-            state_file_path = 'state/lab_state.json'
-            os.makedirs(os.path.dirname(state_file_path), exist_ok=True)  # Create 'state' folder if it doesn't exist
-            with open(state_file_path, 'w') as f:
-                json.dump(state, f)
-            click.echo(f'State saved to {state_file_path}')
-            print("Initalizing terraform..")
-            os.chdir('../AWS')
-            subprocess.run(['terraform', 'init'])
-    elif cp == 'Azure':
-        try:
-            # Use Azure CLI to retrieve the currently logged-in Azure account
-            result = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
-            if result.returncode == 0:
-                output = result.stdout.strip()
+        if os.path.isfile(gcp_credentials_file):
+            os.remove(gcp_credentials_file)
 
-                # Save the credentials to a file
-                credential_file_path = 'credentials/azure_kube_credential.json'
-                os.makedirs(os.path.dirname(credential_file_path), exist_ok=True)
+        shutil.copy(os.path.expanduser('~/.config/gcloud/application_default_credentials.json'), gcp_credentials_file)
 
-                with open(credential_file_path, 'w') as f:
-                    f.write(output)
-                click.echo(f'Credentials saved to {credential_file_path}')
-
-                # Save the state
-                state = {'initialized_cloud_provider': 'Azure'}
-                state_file_path = 'state/lab_state.json'
-                os.makedirs(os.path.dirname(state_file_path), exist_ok=True)  # Create 'state' folder if it doesn't exist
-                with open(state_file_path, 'w') as f:
-                    json.dump(state, f)
-                click.echo(f'State saved to {state_file_path}')
-                print("Initalizing terraform..")
-                os.chdir('../Azure')
-                subprocess.run(['terraform', 'init'])
-            else:
-                click.echo('Azure login failed. Please make sure Azure CLI is installed and logged in.')
-        except Exception as e:
-            click.echo(f'Error occurred while retrieving Azure credentials: {str(e)}')
-    elif cp == 'GCP':
-        try:
-            # Retrieve the GCP application default credentials file path
-            gcp_credentials_file = os.path.expanduser('~/.config/gcloud/application_default_credentials.json')
-            if os.path.isfile(gcp_credentials_file):
-                # Set the destination file path
-                credential_file_path = 'credentials/gcp_kube_credential.json'
-                os.makedirs(os.path.dirname(credential_file_path), exist_ok=True)
-                # Copy the GCP application default credentials file
-                with open(gcp_credentials_file, 'r') as src_file, open(credential_file_path, 'w') as dest_file:
-                    dest_file.write(src_file.read())
-
-                click.echo(f'Credentials saved to {credential_file_path}')
-
-                # Save the state
-                state = {'initialized_cloud_provider': 'GCP'}
-                state_file_path = 'state/lab_state.json'
-                os.makedirs(os.path.dirname(state_file_path), exist_ok=True)  # Create 'state' folder if it doesn't exist
-                with open(state_file_path, 'w') as f:
-                    json.dump(state, f)
-                click.echo(f'State saved to {state_file_path}')
-                print("Initializing Terraform...")
-                os.chdir('../GCP')
-                subprocess.run(['terraform', 'init'])
-            else:
-                click.echo('GCP application default credentials file not found. Please make sure you have authenticated with gcloud and have application default credentials.')
-        except Exception as e:
-            click.echo(f'Error occurred while retrieving GCP credentials: {str(e)}')
-    else:
-        click.echo('Unsupported credentials provider.')
+        click.echo(f'Credentials saved to {gcp_credentials_file}')
+        print("Initializing Terraform...")
+        os.chdir('../GCP')
+        subprocess.run(['terraform', 'init'])
+    except subprocess.CalledProcessError:
+        click.echo('gcloud CLI is not installed. Please install and configure it before proceeding.')
 
 
 @cli.command()
 @click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.option('--region', type=click.STRING, default='eu-west-1', help="Region in which EKS will be deployed", required=False)
-def create(name, region):
-    region_file_path = 'credentials/aws_kube_config'
-    with open(region_file_path, 'w') as f:
-        f.write(f"{region}")
-
-    with open('state/lab_state.json', 'r') as file:
-        data = json.load(file)
-        initialized_cloud_provider = data.get('initialized_cloud_provider')
+@click.option('-cp', '--cloud-provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Cloud provider', required=True)
+def create(name, cloud_provider):
     if name == 'role':
         click.echo("This feature will be available soon")
-    elif name == 'cluster' and initialized_cloud_provider == "AWS":
-        print(f"Creating cluster in {initialized_cloud_provider} and {region} region")
+    elif name == 'cluster' and cloud_provider == "AWS":
+        region = 'eu-west-1'  # Default region for AWS
+        region_file_path = 'credentials/aws_kube_config'
+        with open(region_file_path, 'w') as f:
+            f.write(f"{region}")
+
+        print(f"Creating cluster in {cloud_provider} and {region} region")
         os.chdir('../AWS')
         subprocess.run(['terraform', 'apply', '-auto-approve'])
-    elif name == 'cluster' and initialized_cloud_provider == "Azure":
-        print(f"Creating cluster in {initialized_cloud_provider} ")
+
+        # Retrieve the cluster name from the Terraform output
+        try:
+            completed_process = subprocess.run(['terraform', 'output', '-json'], capture_output=True, text=True, check=True)
+            output_json = completed_process.stdout.strip()
+            output_dict = yaml.safe_load(output_json)
+            cluster_name = output_dict['cluster_name']['value']
+            cluster_region = output_dict['cluster_region']['value']
+        except (subprocess.CalledProcessError, KeyError) as e:
+            print(f"Error: Failed to retrieve cluster name. {e}")
+            return
+
+        os.chdir('../kubelab-cli')
+
+        # Create cluster_credentials directory if it doesn't exist
+        credentials_dir = 'cluster_credentials'
+        if not os.path.exists(credentials_dir):
+            os.makedirs(credentials_dir)
+
+        # Retrieve AWS credentials file path
+        aws_credentials_file = os.path.join('credentials', 'aws_kube_credential')
+
+        # Create the dictionary with cluster information
+        cluster_info = {
+            'cluster_name': cluster_name,
+            'cluster_provider': cloud_provider,
+            'cluster_region': cluster_region,
+            'cluster_credentials': aws_credentials_file
+        }
+
+        # Check if the cluster name already exists in cluster.yaml
+        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+        existing_clusters = []
+        if os.path.exists(yaml_file_path):
+            with open(yaml_file_path, 'r') as yaml_file:
+                existing_clusters = yaml.safe_load(yaml_file)
+                existing_clusters = existing_clusters if existing_clusters is not None else []
+
+        cluster_names = [cluster['cluster_name'] for cluster in existing_clusters]
+
+        if cluster_name in cluster_names:
+            print(f"The cluster name {cluster_name} already exists in cluster.yaml. Skipping append.")
+        else:
+            existing_clusters.append(cluster_info)
+            # Save updated cluster information to YAML file
+            with open(yaml_file_path, 'w') as yaml_file:
+                yaml.dump(existing_clusters, yaml_file)
+
+            # Print the deployed cluster name
+            print(f"{cluster_name} has been deployed.")
+
+    elif name == 'cluster' and cloud_provider == "Azure":
+        print(f"Creating cluster in {cloud_provider}")
         os.chdir('../Azure')
         subprocess.run(['terraform', 'apply', '-auto-approve'])
-    elif name == 'cluster' and initialized_cloud_provider == "GCP":
-        print(f"Creating cluster in {initialized_cloud_provider} ")
+    elif name == 'cluster' and cloud_provider == "GCP":
+        print(f"Creating cluster in {cloud_provider}")
         os.chdir('../GCP')
-        network_result = subprocess.run(['terraform', 'apply', '-target=module.gcp-network', '-auto-approve'])
-        if network_result.returncode == 0:
-            print("Networking deployment successful.")
-        else:
-            print("Something went wrong, Networking have not been deployed.")
-        gke_cluster_result = subprocess.run(['terraform', 'apply', '-target=module.GKE', '-auto-approve'])
-        if gke_cluster_result.returncode == 0:
-            print("Kubernetes cluster deployment successful.")
-        else:
-            print("Something went wrong, Kubernetes cluster have not been deployed.")
-            
+        subprocess.run(['terraform', 'apply', '-auto-approve'])
     elif name == 'rbac':
         click.echo("This feature will be available soon")
+
+
+@cli.command()
+@click.argument('type', type=click.Choice(['cluster']))
+def list(type):
+    if type == 'cluster':
+        credentials_dir = 'cluster_credentials'
+        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+
+        if not os.path.exists(yaml_file_path):
+            click.echo("No cluster.yaml file found.")
+            return
+
+        with open(yaml_file_path, 'r') as yaml_file:
+            clusters = yaml.safe_load(yaml_file)
+
+        if not clusters:
+            click.echo("No clusters found.")
+            return
+
+        click.echo("Clusters:")
+        for cluster in clusters:
+            click.echo(f"- cluster_name: {cluster['cluster_name']}")
+            click.echo(f"  cluster_provider: {cluster['cluster_provider']}")
+            click.echo(f"  cluster_region: {cluster['cluster_region']}")
+            click.echo(f"  cluster_credentials: {cluster['cluster_credentials']}")
+            click.echo()
+    else:
+        print("You have selected a wrong type, run 'lab list --help' for more information.")
 
 
 @cli.command()
@@ -260,7 +278,32 @@ def destroy(param_type, name, region, resource_group, zone):
                 print("The destruction of the cluster has been canceled.")
             else:
                 print("Invalid response. Please provide a valid response (yes/no).")
-        # Destroy cluster that is currently in use with the Azure provider
+
+            # Remove the cluster from cluster.yaml file
+            credentials_dir = 'cluster_credentials'
+            yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+
+            if not os.path.exists(yaml_file_path):
+                click.echo("No cluster.yaml file found.")
+                return
+
+            with open(yaml_file_path, 'r') as yaml_file:
+                clusters = yaml.safe_load(yaml_file)
+
+            if not clusters:
+                click.echo("No clusters found.")
+                return
+
+            filtered_clusters = [c for c in clusters if c['cluster_name'] != name]
+
+            if len(filtered_clusters) == len(clusters):
+                click.echo(f"Cluster '{name}' not found in cluster.yaml.")
+                return
+
+            with open(yaml_file_path, 'w') as yaml_file:
+                yaml.dump(filtered_clusters, yaml_file)
+
+            click.echo(f"Cluster '{name}' in region '{region}' has been destroyed and removed from cluster.yaml.")
         else:
             print(f"The entry for the destroy command is invalid, run: bash lab destroy --help")
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
