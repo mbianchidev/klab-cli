@@ -88,6 +88,57 @@ def create(name, cloud_provider):
         print(f"Creating cluster in {cloud_provider} and {region} region")
         os.chdir('../AWS')
         subprocess.run(['terraform', 'apply', '-auto-approve'])
+
+        # Retrieve the cluster name from the Terraform output
+        try:
+            completed_process = subprocess.run(['terraform', 'output', '-json'], capture_output=True, text=True, check=True)
+            output_json = completed_process.stdout.strip()
+            output_dict = yaml.safe_load(output_json)
+            cluster_name = output_dict['cluster_name']['value']
+            cluster_region = output_dict['cluster_region']['value']
+        except (subprocess.CalledProcessError, KeyError) as e:
+            print(f"Error: Failed to retrieve cluster name. {e}")
+            return
+
+        os.chdir('../kubelab-cli')
+
+        # Create cluster_credentials directory if it doesn't exist
+        credentials_dir = 'cluster_credentials'
+        if not os.path.exists(credentials_dir):
+            os.makedirs(credentials_dir)
+
+        # Retrieve AWS credentials file path
+        aws_credentials_file = os.path.join('credentials', 'aws_kube_credential')
+
+        # Create the dictionary with cluster information
+        cluster_info = {
+            'cluster_name': cluster_name,
+            'cluster_provider': cloud_provider,
+            'cluster_region': cluster_region,
+            'cluster_credentials': aws_credentials_file
+        }
+
+        # Check if the cluster name already exists in cluster.yaml
+        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+        existing_clusters = []
+        if os.path.exists(yaml_file_path):
+            with open(yaml_file_path, 'r') as yaml_file:
+                existing_clusters = yaml.safe_load(yaml_file)
+                existing_clusters = existing_clusters if existing_clusters is not None else []
+
+        cluster_names = [cluster['cluster_name'] for cluster in existing_clusters]
+
+        if cluster_name in cluster_names:
+            print(f"The cluster name {cluster_name} already exists in cluster.yaml. Skipping append.")
+        else:
+            existing_clusters.append(cluster_info)
+            # Save updated cluster information to YAML file
+            with open(yaml_file_path, 'w') as yaml_file:
+                yaml.dump(existing_clusters, yaml_file)
+
+            # Print the deployed cluster name
+            print(f"{cluster_name} has been deployed.")
+
     elif name == 'cluster' and cloud_provider == "Azure":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../Azure')
@@ -98,6 +149,35 @@ def create(name, cloud_provider):
         subprocess.run(['terraform', 'apply', '-auto-approve'])
     elif name == 'rbac':
         click.echo("This feature will be available soon")
+
+
+@cli.command()
+@click.argument('type', type=click.Choice(['cluster']))
+def list(type):
+    if type == 'cluster':
+        credentials_dir = 'cluster_credentials'
+        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+
+        if not os.path.exists(yaml_file_path):
+            click.echo("No cluster.yaml file found.")
+            return
+
+        with open(yaml_file_path, 'r') as yaml_file:
+            clusters = yaml.safe_load(yaml_file)
+
+        if not clusters:
+            click.echo("No clusters found.")
+            return
+
+        click.echo("Clusters:")
+        for cluster in clusters:
+            click.echo(f"- cluster_name: {cluster['cluster_name']}")
+            click.echo(f"  cluster_provider: {cluster['cluster_provider']}")
+            click.echo(f"  cluster_region: {cluster['cluster_region']}")
+            click.echo(f"  cluster_credentials: {cluster['cluster_credentials']}")
+            click.echo()
+    else:
+        print("You have selected a wrong type, run 'lab list --help' for more information.")
 
 
 # There is a bug for the destroy function
