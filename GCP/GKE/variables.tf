@@ -3,13 +3,11 @@
 variable "region" {
   description = "The region for the infrastructure."
   type        = string
-  default     = "us-central1"
 }
 
 variable "project_id" {
   description = "The project ID."
   type        = string
-  default     = "cts-project-388707"
 }
 
 variable "env_name" {
@@ -73,7 +71,6 @@ variable "gke_zones" {
 variable "cluster_name" {
   description = "The name for the GKE cluster"
   type        = string
-  default     = "gke-terraform"
 }
 
 variable "node_pool_min_count" {
