@@ -136,17 +136,12 @@ def create(name, region):
         data = json.load(file)
         initialized_cloud_provider = data.get('initialized_cloud_provider')
     if name == 'role':
-        click.echo("This feature will be available soon")
+        click.echo("This feature will be available soon")   
     elif name == 'cluster' and initialized_cloud_provider == "AWS":
         print(f"Creating cluster in {initialized_cloud_provider} and {region} region")
         os.chdir('../AWS')
-        process = subprocess.Popen(['terraform', 'apply', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        subprocess.Popen('terraform apply -auto-approve > /dev/null 2>&1 &', shell=True)
         click.echo("The cluster will be created in 10 minutes. Please wait...")
-        exit_code = process.wait()
-        if exit_code == 0:
-            click.echo("Cluster creation completed successfully!")
-        else:
-            click.echo("Cluster creation failed.")
     elif name == 'cluster' and initialized_cloud_provider == "Azure":
         print(f"Creating cluster in {initialized_cloud_provider} ")
         os.chdir('../Azure')
@@ -191,13 +186,8 @@ def destroy(param_type, name, region):
     elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
         print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../AWS')
-        process = subprocess.Popen(['terraform', 'destroy', '-auto-approve'], stdout=subprocess.PIPE, universal_newlines=True)
+        subprocess.Popen('terraform destroy -auto-approve > /dev/null 2>&1 &', shell=True)
         click.echo("The cluster will be destroyed in 10 minutes. Please wait...")
-        exit_code = process.wait()
-        if exit_code == 0:
-            click.echo("Cluster destroying completed successfully!")
-        else:
-            click.echo("Cluster destroying failed.")
     elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
         print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
         os.chdir('../Azure')
