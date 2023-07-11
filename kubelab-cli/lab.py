@@ -4,7 +4,7 @@ import click
 import os
 import subprocess
 import json
-import yaml
+from catalog.nginx.deploy import Deploy
 import shutil
 
 
@@ -134,9 +134,16 @@ def destroy(param_type, name, region):
 
 
 @cli.command()
+def test():
+    deployer = Deploy(type)
+    deployer.operator('operator')
+    deployer.deployment('deployment')
+
+
+@cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
+@click.option('--version', type=click.STRING, default='1.5.0', help="Operator version", required=False)
 def add(type, product, version):
     product_cat = dict()
     installed_type = dict()
@@ -148,93 +155,47 @@ def add(type, product, version):
                 product_cat['product'] = line.split(':')[1].strip()
             elif line.startswith('installed_type'):
                 installed_type['installed_type'] = line.split(':')[1].strip()
-    print(f"{product_cat['product']} and {installed_type['installed_type']}")
-    if os.path.isfile("catalog/catalog.yaml") and installed_type['installed_type'] == "deployment":
+    if installed_type['installed_type'] == "deployment":
         answer = input("NGINX is already installed, do you want to switch from the current installation (deployment - latest) to an operator based one? (Y/N): ")
         if answer == 'y':
-            print("Deleting the deployment and switching to operator")
+            print("Deleting the deployment and switching to operator \n")
             type = 'operator'
             deploy_repo = "catalog/nginx/nginx_deployment"
             os.chdir(deploy_repo)
-            subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
+            process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True )
+            exit_code = process.wait()
+            if exit_code == 0:
+                print("Succesfull deleted nginx deployment \n")
+            else:
+                print("Deployment failed")
             os.chdir('../../..')
         elif answer == 'n':
             print("Staying in deployment")
             exit()
-    if os.path.isfile("catalog/catalog.yaml") and installed_type['installed_type'] == "operator":
+    if installed_type['installed_type'] == "operator":
         answer = input(f"NGINX is already installed, do you want to switch from the current installation (operator - {version}) to an deployment based one? (Y/N): ")
         if answer == 'y':
-            print("Deleting operator and switching to deployment")
+            print("Deleting operator and switching to deployment \n")
             type = 'deployment'
             repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
             os.chdir(repo_dir)
             # Delete the deployed operator
-            subprocess.run(['make', 'undeploy'])
+            process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
+            exit_code = process.wait()
+            if exit_code == 0:
+                print(f"Succesfull deleted nginx operator {version} version\n")
+            else:
+                print("Deployment failed")
+            os.chdir('../../../')
         elif answer == 'n':
             print("Staying in deployment")
             exit()
     elif type == 'operator' and product == 'nginx':
-        print(f'Adding NGINX operator with {version} version')
-        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
-        # if not os.path.exists(repo_dir) and version != '1.4.1':
-        subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
-                        '--branch', f'v{version}'])
-        os.chdir(repo_dir)
-        subprocess.run(['git', 'checkout', f'v{version}'])
-        # Deploy the Operator
-        img = f'nginx/nginx-ingress-operator:{version}'
-        subprocess.run(['make', 'deploy', f'IMG={img}'])
-        subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
-        print(f'Nginx operator installed successfully with {version} version')
-        data = [
-            {
-                'product': 'nginx',
-                'default_version': version,
-                'default_type': 'deployment',
-                'available_types': ['deployment', 'operator'],
-                'installed_version': version,
-                'installed_type': type
-            },
-        ]
-        with open('../../catalog.yaml', 'w') as file:
-            for item in data:
-                file.write("- product: {}\n".format(item['product']))
-                file.write("  default_version: {}\n".format(item['default_version']))
-                file.write("  default_type: {}\n".format(item['default_type']))
-                file.write("  available_types:\n")
-                for available_type in item['available_types']:
-                    file.write("    - {}\n".format(available_type))
-                file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n\n".format(item['installed_type']))
-        print("Spec for product saved in the catalog.yaml file")
+        deploy = Deploy(op_version=version)
+        deploy.operator()
     if type == 'deployment' and product == 'nginx':
-        print("Installing nginx with deployment and lattest version")
-        deploy_repo = "catalog/nginx/nginx_deployment"
-        os.chdir(deploy_repo)
-        subprocess.run(['kubectl', 'apply', '-f', 'deployment.yaml'])
-        data = [
-            {
-                'product': 'nginx',
-                'default_version': 'latest',
-                'default_type': 'deployment',
-                'available_types': ['deployment', 'operator'],
-                'installed_version': 'latest',
-                'installed_type': type
-            },
-        ]
-        with open('../../catalog.yaml', 'w') as file:
-            for item in data:
-                file.write("- product: {}\n".format(item['product']))
-                file.write("  default_version: {}\n".format(item['default_version']))
-                file.write("  default_type: {}\n".format(item['default_type']))
-                file.write("  available_types:\n")
-                for available_type in item['available_types']:
-                    file.write("    - {}\n".format(available_type))
-                file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n\n".format(item['installed_type']))
-        print("Spec for product saved in the catalog.yaml file")
-    else:
-        print("Instaling nginx defaults from deployment")
+        deploy = Deploy()
+        deploy.deployment()
 
 
 @cli.command()
@@ -295,7 +256,7 @@ def delete(type, product, version):
                 file.write("  installed_type: {}\n\n".format(item['installed_type']))
         print(f'Nginx operator deleted successfully with {version} version')
     elif type == 'deployment' and product == 'nginx':
-        print("Deleting nginx deployment with lattest version")
+        print("Deleting nginx deployment with lattest image version")
         deploy_repo = "catalog/nginx/nginx_deployment"
         os.chdir(deploy_repo)
         subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
