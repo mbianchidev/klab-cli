@@ -6,9 +6,9 @@ provider "google" {
 
 module "gke_module" {
   source       = "./GKE"
-  cluster_name = "gke-terraform"
-  project_id   = "cts-project-388707"
-  region       = "us-central1"
+  cluster_name = var.cluster_name
+  project_id   = var.project_id
+  region       = var.region
 }
 
 output "cluster_name" {
