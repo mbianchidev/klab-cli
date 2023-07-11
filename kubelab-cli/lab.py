@@ -6,6 +6,7 @@ import subprocess
 import json
 import yaml
 import shutil
+import fnmatch
 
 
 @click.group()
@@ -258,7 +259,8 @@ def create(name, cloud_provider):
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
-def list(type, provider):
+@click.option('--name', help='Filter clusters by name pattern')
+def list(type, provider, name):
     if type == 'cluster':
         credentials_dir = 'cluster_credentials'
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
@@ -277,7 +279,9 @@ def list(type, provider):
         filtered_clusters = []
         for cluster in clusters:
             if provider and cluster.get('cluster_provider') != provider:
-                continue  # Skip clusters that don't match the specified provider filter
+                continue
+            if name and not fnmatch.fnmatch(cluster.get('cluster_name'), f'*{name}*'):
+                continue
             filtered_clusters.append(cluster)
 
         if not filtered_clusters:
