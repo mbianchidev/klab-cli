@@ -257,7 +257,8 @@ def create(name, cloud_provider):
 
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
-def list(type):
+@click.option('--provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
+def list(type, provider):
     if type == 'cluster':
         credentials_dir = 'cluster_credentials'
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
@@ -273,8 +274,18 @@ def list(type):
             click.echo("No clusters found.")
             return
 
-        click.echo("Clusters:")
+        filtered_clusters = []
         for cluster in clusters:
+            if provider and cluster.get('cluster_provider') != provider:
+                continue  # Skip clusters that don't match the specified provider filter
+            filtered_clusters.append(cluster)
+
+        if not filtered_clusters:
+            click.echo("No clusters found matching the specified filter.")
+            return
+
+        click.echo("Clusters:")
+        for cluster in filtered_clusters:
             click.echo(f"- cluster_name: {cluster['cluster_name']}")
             click.echo(f"  cluster_provider: {cluster['cluster_provider']}")
             click.echo(f"  cluster_region: {cluster['cluster_region']}")
