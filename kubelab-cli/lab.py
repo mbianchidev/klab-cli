@@ -4,9 +4,10 @@ import click
 import os
 import subprocess
 import json
-import time
 import yaml
 import shutil
+import fnmatch
+
 
 @click.group()
 def cli():
@@ -72,7 +73,6 @@ def init():
         subprocess.run(['terraform', 'init'])
     except subprocess.CalledProcessError:
         click.echo('gcloud CLI is not installed. Please install and configure it before proceeding.')
-
 
 @cli.command()
 @click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
@@ -258,7 +258,9 @@ def create(name, cloud_provider):
 
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
-def list(type):
+@click.option('--provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
+@click.option('--name', help='Filter clusters by name pattern')
+def list(type, provider, name):
     if type == 'cluster':
         credentials_dir = 'cluster_credentials'
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
@@ -274,8 +276,20 @@ def list(type):
             click.echo("No clusters found.")
             return
 
-        click.echo("Clusters:")
+        filtered_clusters = []
         for cluster in clusters:
+            if provider and cluster.get('cluster_provider') != provider:
+                continue
+            if name and not fnmatch.fnmatch(cluster.get('cluster_name'), f'*{name}*'):
+                continue
+            filtered_clusters.append(cluster)
+
+        if not filtered_clusters:
+            click.echo("No clusters found matching the specified filter.")
+            return
+
+        click.echo("Clusters:")
+        for cluster in filtered_clusters:
             click.echo(f"- cluster_name: {cluster['cluster_name']}")
             click.echo(f"  cluster_provider: {cluster['cluster_provider']}")
             click.echo(f"  cluster_region: {cluster['cluster_region']}")
@@ -470,52 +484,317 @@ def destroy(param_type, name, region):
                     else:
                         print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} does not exist.")
 
-                    # Remove the destroyed cluster from the cluster.yaml file
-                    data.remove(cluster)
-                    with open('cluster_credentials/cluster.yaml', 'w') as file:
-                        yaml.dump(data, file)
+                # Remove the destroyed cluster from the cluster.yaml file
+                data.remove(cluster)
+                with open('cluster_credentials/cluster.yaml', 'w') as file:
+                    yaml.dump(data, file)
 
 
 @cli.command()
-@click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
+@click.argument('param_type', type=click.Choice(['cluster']))
+@click.option('--name', type=click.STRING, help='What is the cluster named as?')
+@click.option('--region', type=click.STRING, help='Where is the cluster located?')
+def destroy(param_type, name, region):
+    if param_type == "cluster":
+        if name is None and region is None:
+            print("Please provide both the cluster name and region.")
+        elif name is None:
+            print("Please provide the cluster name.")
+        elif region is None:
+            print("Please provide the cluster region.")
+        else:
+            # Load cluster credentials from YAML file
+            with open('cluster_credentials/cluster.yaml', 'r') as file:
+                data = yaml.safe_load(file)
+
+            # Find the matching cluster based on name and region
+            matching_clusters = [cluster for cluster in data if cluster.get('cluster_name') == name and cluster.get('cluster_region') == region]
+
+            if matching_clusters:
+                cluster = matching_clusters[0]  # Use the first matching cluster
+
+                cluster_provider = cluster.get('cluster_provider')
+
+                if cluster_provider == "AWS":
+                    # Perform AWS-specific destruction command
+                    aws_cluster_name = cluster.get('cluster_name')
+                    aws_cluster_region = cluster.get('cluster_region')
+
+                    print(f"You have selected to destroy cluster: {aws_cluster_name} that is located in: {aws_cluster_region}")
+                    check_command = f"aws eks describe-cluster --name {aws_cluster_name} --region {aws_cluster_region}"
+                    try:
+                        subprocess.check_output(check_command, stderr=subprocess.STDOUT, shell=True)
+                    except subprocess.CalledProcessError as e:
+                        if "ResourceNotFoundException" in e.output.decode():
+                            print(f"The EKS cluster named {aws_cluster_name} in region {aws_cluster_region} does not exist.")
+                        else:
+                            print("Error occurred during describe-cluster command. Please check the command and try again.")
+                        return
+
+                    confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                    if confirmation == 'yes':
+                        check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
+
+                        try:
+                            check_output = subprocess.check_output(check_command, stderr=subprocess.STDOUT, shell=True)
+                        except subprocess.CalledProcessError:
+                            print("Error occurred during list-nodegroups command. Please check the command and try again.")
+                            return
+
+                        if check_output:
+                            node_groups = json.loads(check_output)['nodegroups']
+                            
+                            for node_group in node_groups:
+                                check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
+
+                                delete_node_group_command = f"aws eks delete-nodegroup --cluster-name {aws_cluster_name} --nodegroup-name {node_group} --region {aws_cluster_region}"
+                                print(f"Node group {node_group} is being destroyed..")
+                                subprocess.Popen(delete_node_group_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True).communicate() 
+
+                                while True:
+                                    # Run the AWS CLI command to list node groups
+                                    check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
+                                    result = subprocess.run(check_command, shell=True, capture_output=True, text=True)
+
+                                    if result.returncode == 0:
+                                        # Parse the JSON output
+                                        output = json.loads(result.stdout)
+
+                                        if "nodegroups" in output and len(output["nodegroups"]) == 0:
+                                            print(f"The Node Groups of the {aws_cluster_name} cluster have been destroyed.")
+                                            break
+
+                                    else:
+                                        print("An error occurred while executing the command.")
+                        delete_command = f"aws eks delete-cluster --name {aws_cluster_name} --region {aws_cluster_region}"
+                        print(f"The EKS cluster {aws_cluster_name} in region {aws_cluster_region} is being destroyed..")
+                        subprocess.check_call(delete_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
+
+                        while True:
+                            check_cluster_command = f"aws eks describe-cluster --name {aws_cluster_name} --region {aws_cluster_region}"
+                            try:
+                                check_output = subprocess.check_output(check_cluster_command, stderr=subprocess.STDOUT, shell=True)
+                            except subprocess.CalledProcessError as e:
+                                if "ResourceNotFoundException" in e.output.decode():
+                                    print(f"The EKS cluster named {aws_cluster_name} in region {aws_cluster_region} has been destroyed.")
+                                    break
+                                else:
+                                    print("Error occurred during describe-cluster command. Please check the command and try again.")
+                                    return
+
+                    elif confirmation == 'no':
+                        print("The destruction of the cluster has been canceled.")
+                    else:
+                        print("Invalid response. Please provide a valid response (yes/no).")
+
+                elif cluster_provider == "Azure":
+                    azure_cluster_name = cluster.get('cluster_name')
+                    azure_resource_group = cluster.get('cluster_resource_group')
+
+                    try:
+                        describe_command = f"az aks show --name {azure_cluster_name} --resource-group {azure_resource_group} --query provisioningState --output tsv"
+                        result = subprocess.check_output(describe_command, stderr=subprocess.STDOUT, shell=True)
+                        provisioning_state = result.decode().strip()
+
+                        if provisioning_state == "Succeeded":
+                            print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} exists.")
+                            try:
+                                confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                                if confirmation == 'yes':
+                                    delete_command = f"az aks delete --name {azure_cluster_name} --resource-group {azure_resource_group} --yes"
+                                    print(f"Deleting AKS cluster named {azure_cluster_name} in resource group {azure_resource_group}.")
+                                    subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
+                                    print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} has been deleted successfully.")
+                                elif confirmation == 'no':
+                                    print("The destruction of the cluster has been canceled.")
+                                else:
+                                    print("Invalid response. Please provide a valid response (yes/no).")
+
+                            except subprocess.CalledProcessError as e:
+                                print("Error occurred during 'az aks delete' command. Please check the command and try again.")
+                        else:
+                            print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} does not exist.")
+                            return
+
+                    except subprocess.CalledProcessError as e:
+                        print("Error occurred during 'az aks show' command. Please check the command and try again.")
+
+                elif cluster_provider == "GCP":
+                    gcp_cluster_name = cluster.get('cluster_name')
+                    gcp_cluster_region = cluster.get('cluster_region')
+
+                    # Check if the cluster exists in the cluster credentials
+                    matching_cluster = next((c for c in data if c.get('cluster_name') == gcp_cluster_name and c.get('cluster_region') == gcp_cluster_region), None)
+
+                    if matching_cluster:
+                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} exists.")
+
+                        confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                        if confirmation == 'yes':
+                            # Retrieve the available zones for the specified region using the Google Cloud API
+                            zone_command = f"gcloud compute zones list --filter='{gcp_cluster_region}' --format='value(name)'"
+                            try:
+                                zones_output = subprocess.check_output(zone_command, shell=True).decode().strip()
+                                zones = zones_output.splitlines()
+
+                                if not zones:
+                                    print(f"No zones found for region {gcp_cluster_region}.")
+                                    return
+
+                                cluster_deleted = False
+
+                                for zone in zones:
+                                    describe_command = f"gcloud container clusters describe {gcp_cluster_name} --zone {zone} --format='value(zone)'"
+                                    try:
+                                        subprocess.check_output(describe_command, stderr=subprocess.STDOUT, shell=True)
+                                    except subprocess.CalledProcessError as e:
+                                        continue  # Cluster not found in this zone, move on to the next zone
+
+                                    # Cluster found in this zone, delete it
+                                    delete_command = f"gcloud container clusters delete {gcp_cluster_name} --zone {zone} --quiet"
+                                    subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
+                                    cluster_deleted = True
+
+                                if cluster_deleted:
+                                    print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} has been deleted successfully.")
+                                else:
+                                    print(f"No GKE cluster named {gcp_cluster_name} found in any zone of region {gcp_cluster_region}.")
+
+                            except subprocess.CalledProcessError as e:
+                                print("An error occurred while retrieving the available zones. Please check the command and try again.")
+
+                        elif confirmation == 'no':
+                            print("The destruction of the cluster has been canceled.")
+                        else:
+                            print("Invalid response. Please provide a valid response (yes/no).")
+
+                    else:
+                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} does not exist.")
+
+                # Remove the destroyed cluster from the cluster.yaml file
+                data.remove(cluster)
+                with open('cluster_credentials/cluster.yaml', 'w') as file:
+                    yaml.dump(data, file)
+
+
+@cli.command()
+@click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.4.2', help="Operator version", required=False)
+@click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def add(type, product, version):
-    if type == 'operator' and product == 'nginx':
-        print(f'Adding NGINX with {version} version')
-        repo_dir = 'nginx-ingress-helm-operator'
-        if not os.path.exists(repo_dir):
-            subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
-                            '--branch', f'v{version}'])
+    product_cat = dict()
+    installed_type = dict()
+    with open("catalog/catalog.yaml", 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            line = line.strip()
+            if line.startswith('- product'):
+                product_cat['product'] = line.split(':')[1].strip()
+            elif line.startswith('installed_type'):
+                installed_type['installed_type'] = line.split(':')[1].strip()
+    print(f"{product_cat['product']} and {installed_type['installed_type']}")
+    if os.path.isfile("catalog/catalog.yaml") and installed_type['installed_type'] == "deployment":
+        answer = input("NGINX is already installed, do you want to switch from the current installation (deployment - latest) to an operator based one? (Y/N): ")
+        if answer == 'y':
+            print("Deleting the deployment and switching to operator")
+            type = 'operator'
+            deploy_repo = "catalog/nginx/nginx_deployment"
+            os.chdir(deploy_repo)
+            subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
+            os.chdir('../../..')
+        elif answer == 'n':
+            print("Staying in deployment")
+            exit()
+    if os.path.isfile("catalog/catalog.yaml") and installed_type['installed_type'] == "operator":
+        answer = input(f"NGINX is already installed, do you want to switch from the current installation (operator - {version}) to an deployment based one? (Y/N): ")
+        if answer == 'y':
+            print("Deleting operator and switching to deployment")
+            type = 'deployment'
+            repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
+            os.chdir(repo_dir)
+            # Delete the deployed operator
+            subprocess.run(['make', 'undeploy'])
+        elif answer == 'n':
+            print("Staying in deployment")
+            exit()
+    elif type == 'operator' and product == 'nginx':
+        print(f'Adding NGINX operator with {version} version')
+        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
+        # if not os.path.exists(repo_dir) and version != '1.4.1':
+        subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
+                        '--branch', f'v{version}'])
         os.chdir(repo_dir)
+        subprocess.run(['git', 'checkout', f'v{version}'])
         # Deploy the Operator
         img = f'nginx/nginx-ingress-operator:{version}'
         subprocess.run(['make', 'deploy', f'IMG={img}'])
         subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
-
         print(f'Nginx operator installed successfully with {version} version')
-    elif type == 'deployment' and product == 'nginx':
+        data = [
+            {
+                'product': 'nginx',
+                'default_version': version,
+                'default_type': 'deployment',
+                'available_types': ['deployment', 'operator'],
+                'installed_version': version,
+                'installed_type': type
+            },
+        ]
+        with open('../../catalog.yaml', 'w') as file:
+            for item in data:
+                file.write("- product: {}\n".format(item['product']))
+                file.write("  default_version: {}\n".format(item['default_version']))
+                file.write("  default_type: {}\n".format(item['default_type']))
+                file.write("  available_types:\n")
+                for available_type in item['available_types']:
+                    file.write("    - {}\n".format(available_type))
+                file.write("  installed_version: {}\n".format(item['installed_version']))
+                file.write("  installed_type: {}\n\n".format(item['installed_type']))
+        print("Spec for product saved in the catalog.yaml file")
+    if type == 'deployment' and product == 'nginx':
         print("Installing nginx with deployment and lattest version")
-        deploy_repo = "nginx_deployment"
+        deploy_repo = "catalog/nginx/nginx_deployment"
         os.chdir(deploy_repo)
         subprocess.run(['kubectl', 'apply', '-f', 'deployment.yaml'])
+        data = [
+            {
+                'product': 'nginx',
+                'default_version': 'latest',
+                'default_type': 'deployment',
+                'available_types': ['deployment', 'operator'],
+                'installed_version': 'latest',
+                'installed_type': type
+            },
+        ]
+        with open('../../catalog.yaml', 'w') as file:
+            for item in data:
+                file.write("- product: {}\n".format(item['product']))
+                file.write("  default_version: {}\n".format(item['default_version']))
+                file.write("  default_type: {}\n".format(item['default_type']))
+                file.write("  available_types:\n")
+                for available_type in item['available_types']:
+                    file.write("    - {}\n".format(available_type))
+                file.write("  installed_version: {}\n".format(item['installed_version']))
+                file.write("  installed_type: {}\n\n".format(item['installed_type']))
+        print("Spec for product saved in the catalog.yaml file")
     else:
-        print('Invalid configuration.')
+        print("Instaling nginx defaults from deployment")
 
 
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.4.2', help="Operator version", required=False)
+@click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def update(type, product, version):
     if type == 'operator' and product == 'nginx':
         print(f'Upadating NGINX with latest {version} version')
-        repo_dir = 'nginx-ingress-helm-operator'
+        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
         if not os.path.exists(repo_dir):
             subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
                             '--branch', f'v{version}'])
         os.chdir(repo_dir)
-        # Update the Operator 
+        subprocess.run(['git', 'checkout', f'v{version}'])
+        # Update the Operator
         img = f'nginx/nginx-ingress-operator:{version}'
         subprocess.run(['make', 'deploy', f'IMG={img}'])
         subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
@@ -530,21 +809,60 @@ def update(type, product, version):
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.4.2', help="Operator version", required=False)
+@click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def delete(type, product, version):
     if type == 'operator' and product == 'nginx':
         print(f'Deleting NGINX with {version} version')
-        repo_dir = 'nginx-ingress-helm-operator'
+        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
         os.chdir(repo_dir)
         # Delete the deployed operator
         subprocess.run(['make', 'undeploy'])
-
+        data = [
+            {
+                'product': 'nginx',
+                'default_version': 'latest',
+                'default_type': 'deployment',
+                'available_types': ['deployment', 'operator'],
+                'installed_version': 'latest',
+                'installed_type': ''
+            },
+        ]
+        with open('../../catalog.yaml', 'w') as file:
+            for item in data:
+                file.write("- product: {}\n".format(item['product']))
+                file.write("  default_version: {}\n".format(item['default_version']))
+                file.write("  default_type: {}\n".format(item['default_type']))
+                file.write("  available_types:\n")
+                for available_type in item['available_types']:
+                    file.write("    - {}\n".format(available_type))
+                file.write("  installed_version: {}\n".format(item['installed_version']))
+                file.write("  installed_type: {}\n\n".format(item['installed_type']))
         print(f'Nginx operator deleted successfully with {version} version')
     elif type == 'deployment' and product == 'nginx':
         print("Deleting nginx deployment with lattest version")
-        deploy_repo = "nginx_deployment"
+        deploy_repo = "catalog/nginx/nginx_deployment"
         os.chdir(deploy_repo)
         subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
+        data = [
+            {
+                'product': 'nginx',
+                'default_version': 'latest',
+                'default_type': 'deployment',
+                'available_types': ['deployment', 'operator'],
+                'installed_version': 'latest',
+                'installed_type': ''
+            },
+        ]
+        with open('../../catalog.yaml', 'w') as file:
+            for item in data:
+                file.write("- product: {}\n".format(item['product']))
+                file.write("  default_version: {}\n".format(item['default_version']))
+                file.write("  default_type: {}\n".format(item['default_type']))
+                file.write("  available_types:\n")
+                for available_type in item['available_types']:
+                    file.write("    - {}\n".format(available_type))
+                file.write("  installed_version: {}\n".format(item['installed_version']))
+                file.write("  installed_type: {}\n\n".format(item['installed_type']))
     else:
         print('Invalid configuration.')
 
@@ -581,7 +899,8 @@ def use(name, cluster, region, resource_group):
 
 @cli.command()
 def info():
-    return "Hello"
+    print("Information about the kubernetes are from cnquery lib")
+    subprocess.run(['cnquery', 'shell', 'k8s'])
 
 
 if __name__ == '__main__':
