@@ -34,3 +34,15 @@ module "AKS" {
   min_node_count      = 1
   max_node_count      = 2
 }
+
+output "cluster_name" {
+  value = module.AKS.cluster_name
+}
+
+output "cluster_region" {
+  value = module.AKS.cluster_region
+}
+
+output "cluster_resource_group" {
+  value = module.AKS.resource_group_name
+}
