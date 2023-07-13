@@ -165,7 +165,7 @@ def add(type, product, version):
             process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True )
             exit_code = process.wait()
             if exit_code == 0:
-                print("Succesfull deleted nginx deployment \n")
+                print("Successfully deleted nginx deployment \n")
             else:
                 print("Deployment failed")
             os.chdir('../../..')
@@ -183,7 +183,7 @@ def add(type, product, version):
             process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
             exit_code = process.wait()
             if exit_code == 0:
-                print(f"Succesfully deleted nginx operator {version} version\n")
+                print(f"Successfully deleted nginx operator {version} version\n")
             else:
                 print("Deployment failed")
             os.chdir('../../../')
