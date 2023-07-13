@@ -183,12 +183,12 @@ def add(type, product, version):
             process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
             exit_code = process.wait()
             if exit_code == 0:
-                print(f"Succesful deleted nginx operator {version} version\n")
+                print(f"Succesfully deleted nginx operator {version} version\n")
             else:
                 print("Deployment failed")
             os.chdir('../../../')
         elif answer == 'n':
-            print("Staying in deployment")
+            print("Keeping the deployment installed.")
             exit()
     elif type == 'operator' and product == 'nginx':
         deploy = Deploy(op_version=version)
@@ -204,7 +204,7 @@ def add(type, product, version):
 @click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def update(type, product, version):
     if type == 'operator' and product == 'nginx':
-        print(f'Upadating NGINX with latest {version} version')
+        print(f'Upadating NGINX with latest version ({version})')
         repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
         if not os.path.exists(repo_dir):
             subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
