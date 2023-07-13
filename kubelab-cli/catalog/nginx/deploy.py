@@ -16,7 +16,7 @@ class Deploy:
         print("Installing nginx with deployment and latest image version \n ")
         exit_code = process.wait()
         if exit_code == 0:
-            print("Succesful deployed nginx with deployment \n ")
+            print("Successfully deployed nginx with deployment \n ")
         else:
             print("Deployment failed")
         data = [
@@ -54,7 +54,7 @@ class Deploy:
         process = subprocess.Popen(['make', 'deploy', f'IMG={img}'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
-            print(f"Succesful deployed nginx with operator {self.op_version} version\n")
+            print(f"Succesfully deployed nginx with operator {self.op_version} version\n")
         else:
             print("Deployment failed")
         data = [

@@ -147,6 +147,7 @@ def test():
 def add(type, product, version):
     product_cat = dict()
     installed_type = dict()
+    # FIXME switch between deployment/operator must be done in the specific file
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
