@@ -20,59 +20,60 @@ def init():
     credentials_dir = os.path.join(script_dir, 'credentials')
     os.makedirs(credentials_dir, exist_ok=True)
 
-    # Check if AWS CLI is installed and configured
-    try:
-        subprocess.run(['aws', '--version'], check=True, capture_output=True, text=True)
-        aws_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
-
-        if os.path.isfile(aws_credentials_file):
-            os.remove(aws_credentials_file)
-
-        shutil.copy(os.path.expanduser('~/.aws/credentials'), aws_credentials_file)
-
-        click.echo(f'Credentials saved to {aws_credentials_file}')
-        print("Initializing Terraform...")
+    # Check for AWS credentials
+    aws_credentials_file = os.path.expanduser('~/.aws/credentials')
+    if os.path.isfile(aws_credentials_file):
+        aws_kube_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
+        shutil.copy(aws_credentials_file, aws_kube_credentials_file)
+        click.echo(f'AWS credentials saved to {aws_kube_credentials_file}\n')
+        print("Initializing Terraform...\n")
         os.chdir('../AWS')
-        subprocess.run(['terraform', 'init'])
-    except subprocess.CalledProcessError:
-        click.echo('AWS CLI is not installed. Please install and configure it before proceeding.')
-
-    # Check if Azure CLI is installed and configured
-    try:
-        subprocess.run(['az', '--version'], check=True, capture_output=True, text=True)
-        result = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
-        if result.returncode == 0:
-            output = result.stdout.strip()
-            azure_credentials_file = os.path.join(credentials_dir, 'azure_kube_credential.json')
-
-            with open(azure_credentials_file, 'w') as f:
-                f.write(output)
-
-            click.echo(f'Credentials saved to {azure_credentials_file}')
-            print("Initializing Terraform...")
-            os.chdir('../Azure')
-            subprocess.run(['terraform', 'init'])
+        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Terraform is succsesfuly initalized\n")
         else:
-            click.echo('Azure login failed. Please make sure Azure CLI is installed and logged in.')
-    except subprocess.CalledProcessError:
-        click.echo('Azure CLI is not installed. Please install and configure it before proceeding.')
+            print("Terraform is not initialzed\n")
+    else:
+        click.echo('AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
 
-    # Check if gcloud CLI is installed and configured
-    try:
-        subprocess.run(['gcloud', '--version'], check=True, capture_output=True, text=True)
-        gcp_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential.json')
+    # Check for Azure credentials
+    azure_credential_check = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
+    if azure_credential_check.returncode == 0:
+        output = azure_credential_check.stdout.strip()
+        azure_credentials_file = os.path.join(credentials_dir, 'azure_kube_credential.json')
 
-        if os.path.isfile(gcp_credentials_file):
-            os.remove(gcp_credentials_file)
+        with open(azure_credentials_file, 'w') as f:
+            f.write(output)
 
-        shutil.copy(os.path.expanduser('~/.config/gcloud/application_default_credentials.json'), gcp_credentials_file)
+        click.echo(f'Azure credentials saved to {azure_credentials_file}\n')
+        print("Initializing Terraform...")
+        os.chdir('../Azure')
+        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Terraform is succsesfuly initalized\n")
+        else:
+            print("Terraform is not initialzed\n")
+    else:
+        click.echo('Azure CLI is not installed or configured. Please install and configure it before proceeding.\n')
 
-        click.echo(f'Credentials saved to {gcp_credentials_file}')
+    # Check for gcloud credentials
+    gcloud_credentials_file = os.path.expanduser('~/.config/gcloud/application_default_credentials.json')
+    if os.path.isfile(gcloud_credentials_file):
+        gcp_kube_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential.json')
+        shutil.copy(gcloud_credentials_file, gcp_kube_credentials_file)
+        click.echo(f'Gcloud credentials saved to {gcp_kube_credentials_file}')
         print("Initializing Terraform...")
         os.chdir('../GCP')
-        subprocess.run(['terraform', 'init'])
-    except subprocess.CalledProcessError:
-        click.echo('gcloud CLI is not installed. Please install and configure it before proceeding.')
+        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Terraform is succsesfuly initalized\n")
+        else:
+            print("Terraform is not initialzed\n")
+    else:
+        click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.')
 
 @cli.command()
 @click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
