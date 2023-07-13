@@ -8,6 +8,7 @@ from catalog.nginx.deploy import Deploy
 import shutil
 import fnmatch
 import yaml
+import pytest
 
 
 @click.group()
@@ -764,6 +765,11 @@ def use(type, cluster, provider, region, resource_group, project):
 def info():
     print("Information about your cluster come from cnquery lib - thanks mondoo")
     subprocess.run(['cnquery', 'shell', 'k8s'])
+
+
+@cli.command()
+def test():
+    pytest.main(['-s', 'tests/nginx_test.py'])
 
 
 if __name__ == '__main__':
