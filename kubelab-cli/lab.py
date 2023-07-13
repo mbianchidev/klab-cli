@@ -9,6 +9,8 @@ import shutil
 import fnmatch
 import yaml
 import sys
+import pytest
+
 
 @click.group()
 def cli():
@@ -672,6 +674,11 @@ def use(cluster, region, resource_group):
 def info():
     print("Information about your cluster come from cnquery lib - thanks mondoo")
     subprocess.run(['cnquery', 'shell', 'k8s'])
+
+
+@cli.command()
+def test():
+    pytest.main(['-s', 'tests/nginx_test.py'])
 
 
 if __name__ == '__main__':
