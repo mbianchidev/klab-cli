@@ -31,9 +31,9 @@ def init():
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
-            print("Terraform is succsesfuly initalized\n")
+            print("Terraform is successfully initialized\n")
         else:
-            print("Terraform is not initialzed\n")
+            print("Terraform hasn't been initialized. Please check tf logs\n")
     else:
         click.echo('AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
 
@@ -52,9 +52,9 @@ def init():
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
-            print("Terraform is succsesfuly initalized\n")
+            print("Terraform is succsesfuly initialized\n")
         else:
-            print("Terraform is not initialzed\n")
+            print("Terraform is not initialized\n")
     else:
         click.echo('Azure CLI is not installed or configured. Please install and configure it before proceeding.\n')
 
@@ -69,9 +69,9 @@ def init():
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
-            print("Terraform is succsesfuly initalized\n")
+            print("Terraform is successfully initialized\n")
         else:
-            print("Terraform is not initialzed\n")
+            print("Terraform is not initialized\n")
     else:
         click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.')
 
