@@ -183,7 +183,7 @@ def add(type, product, version):
             process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
             exit_code = process.wait()
             if exit_code == 0:
-                print(f"Succesfull deleted nginx operator {version} version\n")
+                print(f"Succesful deleted nginx operator {version} version\n")
             else:
                 print("Deployment failed")
             os.chdir('../../../')
@@ -216,7 +216,7 @@ def update(type, product, version):
         subprocess.run(['make', 'deploy', f'IMG={img}'])
         subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
 
-        print(f'Nginx operator updated successfully with {version} version')
+        print(f'Nginx operator updated successfuly with {version} version')
     elif type == 'deployment' and product == 'nginx':
         print("Cant't update via deployment type must be changed in the yaml manifest.")
     else:
@@ -254,9 +254,9 @@ def delete(type, product, version):
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
                 file.write("  installed_type: {}\n\n".format(item['installed_type']))
-        print(f'Nginx operator deleted successfully with {version} version')
+        print(f'Nginx operator deleted successfuly with {version} version')
     elif type == 'deployment' and product == 'nginx':
-        print("Deleting nginx deployment with lattest image version")
+        print("Deleting nginx deployment with latest image version")
         deploy_repo = "catalog/nginx/nginx_deployment"
         os.chdir(deploy_repo)
         subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])

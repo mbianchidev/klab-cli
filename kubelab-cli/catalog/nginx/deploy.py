@@ -13,10 +13,10 @@ class Deploy:
         deploy_repo = "catalog/nginx/nginx_deployment"
         os.chdir(deploy_repo)
         process = subprocess.Popen(['kubectl', 'apply', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True)
-        print("Installing nginx with deployment and lattest image version \n ")
+        print("Installing nginx with deployment and latest image version \n ")
         exit_code = process.wait()
         if exit_code == 0:
-            print("Succesfull deployed nginx with deployment \n ")
+            print("Succesful deployed nginx with deployment \n ")
         else:
             print("Deployment failed")
         data = [
@@ -39,7 +39,6 @@ class Deploy:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
                 file.write("  installed_type: {}\n\n".format(item['installed_type']))
-        # print("Spec for product saved in the catalog.yaml file")
 
     def operator(self):
         # Operator code here
@@ -55,11 +54,9 @@ class Deploy:
         process = subprocess.Popen(['make', 'deploy', f'IMG={img}'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
-            print(f"Succesfull deployed nginx with operator {self.op_version} version\n")
+            print(f"Succesful deployed nginx with operator {self.op_version} version\n")
         else:
             print("Deployment failed")
-        # subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
-        # print(f'Nginx operator installed successfully with {self.op_version} version')
         data = [
             {
                 'product': 'nginx',
@@ -80,5 +77,4 @@ class Deploy:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
                 file.write("  installed_type: {}\n\n".format(item['installed_type']))
-        # print("Spec for product saved in the catalog.yaml file")
         pass
