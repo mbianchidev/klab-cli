@@ -177,3 +177,5 @@ cluster_credentials/
 lab_state.json
 state/
 credentials/
+
+catalog/

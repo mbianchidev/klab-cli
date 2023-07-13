@@ -1,5 +1,5 @@
 variable "rgname" {
-    default = "aks-tg"
+  default = "aks-tg"
 }
 variable "location" {
   default = "eastus"
@@ -21,7 +21,7 @@ variable "aksdns" {
 }
 variable "nsg_rules" {
   description = "List of security rules for the network security group"
-  type        = list(object({
+  type = list(object({
     name                       = string
     priority                   = number
     direction                  = string

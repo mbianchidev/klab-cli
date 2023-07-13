@@ -1,9 +1,0 @@
-- product: nginx
-  default_version: latest
-  default_type: deployment
-  available_types:
-    - deployment
-    - operator
-  installed_version: latest
-  installed_type: 
-
