@@ -145,7 +145,7 @@ def create(name, cloud_provider):
     elif name == 'cluster' and cloud_provider == "Azure":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../Azure')
-        subprocess.Popen('terraform apply -auto-approve > log/kubelab.log 2>&1 & ', shell=True)
+        subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
 
         # Retrieve the cluster name from the Terraform output
@@ -202,7 +202,7 @@ def create(name, cloud_provider):
     elif name == 'cluster' and cloud_provider == "GCP":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../GCP')
-        subprocess.Popen('terraform apply -auto-approve > log/kubelab.log 2>&1 & ', shell=True)
+        subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
 
         # Retrieve the cluster name from the Terraform output
