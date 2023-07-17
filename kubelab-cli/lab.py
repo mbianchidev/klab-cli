@@ -4,9 +4,10 @@ import click
 import os
 import subprocess
 import json
-import yaml
+from catalog.nginx.deploy import Deploy
 import shutil
 import fnmatch
+import yaml
 
 
 @click.group()
@@ -20,59 +21,60 @@ def init():
     credentials_dir = os.path.join(script_dir, 'credentials')
     os.makedirs(credentials_dir, exist_ok=True)
 
-    # Check if AWS CLI is installed and configured
-    try:
-        subprocess.run(['aws', '--version'], check=True, capture_output=True, text=True)
-        aws_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
-
-        if os.path.isfile(aws_credentials_file):
-            os.remove(aws_credentials_file)
-
-        shutil.copy(os.path.expanduser('~/.aws/credentials'), aws_credentials_file)
-
-        click.echo(f'Credentials saved to {aws_credentials_file}')
-        print("Initializing Terraform...")
+    # Check for AWS credentials
+    aws_credentials_file = os.path.expanduser('~/.aws/credentials')
+    if os.path.isfile(aws_credentials_file):
+        aws_kube_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
+        shutil.copy(aws_credentials_file, aws_kube_credentials_file)
+        click.echo(f'AWS credentials saved to {aws_kube_credentials_file}\n')
+        print("Initializing Terraform...\n")
         os.chdir('../AWS')
-        subprocess.run(['terraform', 'init'])
-    except subprocess.CalledProcessError:
-        click.echo('AWS CLI is not installed. Please install and configure it before proceeding.')
-
-    # Check if Azure CLI is installed and configured
-    try:
-        subprocess.run(['az', '--version'], check=True, capture_output=True, text=True)
-        result = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
-        if result.returncode == 0:
-            output = result.stdout.strip()
-            azure_credentials_file = os.path.join(credentials_dir, 'azure_kube_credential.json')
-
-            with open(azure_credentials_file, 'w') as f:
-                f.write(output)
-
-            click.echo(f'Credentials saved to {azure_credentials_file}')
-            print("Initializing Terraform...")
-            os.chdir('../Azure')
-            subprocess.run(['terraform', 'init'])
+        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Terraform is successfully initialized\n")
         else:
-            click.echo('Azure login failed. Please make sure Azure CLI is installed and logged in.')
-    except subprocess.CalledProcessError:
-        click.echo('Azure CLI is not installed. Please install and configure it before proceeding.')
+            print("Terraform hasn't been initialized. Please check tf logs\n")
+    else:
+        click.echo('AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
 
-    # Check if gcloud CLI is installed and configured
-    try:
-        subprocess.run(['gcloud', '--version'], check=True, capture_output=True, text=True)
-        gcp_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential.json')
+    # Check for Azure credentials
+    azure_credential_check = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
+    if azure_credential_check.returncode == 0:
+        output = azure_credential_check.stdout.strip()
+        azure_credentials_file = os.path.join(credentials_dir, 'azure_kube_credential.json')
 
-        if os.path.isfile(gcp_credentials_file):
-            os.remove(gcp_credentials_file)
+        with open(azure_credentials_file, 'w') as f:
+            f.write(output)
 
-        shutil.copy(os.path.expanduser('~/.config/gcloud/application_default_credentials.json'), gcp_credentials_file)
+        click.echo(f'Azure credentials saved to {azure_credentials_file}\n')
+        print("Initializing Terraform...")
+        os.chdir('../Azure')
+        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Terraform is succsesfuly initialized\n")
+        else:
+            print("Terraform is not initialized\n")
+    else:
+        click.echo('Azure CLI is not installed or configured. Please install and configure it before proceeding.\n')
 
-        click.echo(f'Credentials saved to {gcp_credentials_file}')
+    # Check for gcloud credentials
+    gcloud_credentials_file = os.path.expanduser('~/.config/gcloud/application_default_credentials.json')
+    if os.path.isfile(gcloud_credentials_file):
+        gcp_kube_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential.json')
+        shutil.copy(gcloud_credentials_file, gcp_kube_credentials_file)
+        click.echo(f'Gcloud credentials saved to {gcp_kube_credentials_file}')
         print("Initializing Terraform...")
         os.chdir('../GCP')
-        subprocess.run(['terraform', 'init'])
-    except subprocess.CalledProcessError:
-        click.echo('gcloud CLI is not installed. Please install and configure it before proceeding.')
+        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+        exit_code = process.wait()
+        if exit_code == 0:
+            print("Terraform is successfully initialized\n")
+        else:
+            print("Terraform is not initialized\n")
+    else:
+        click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.')
 
 @cli.command()
 @click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
@@ -303,46 +305,208 @@ def list(type, provider, name):
         print("You have selected a wrong type, run 'lab list --help' for more information.")
 
 
-# There is a bug for the destroy function
-# This function currently destroys everything for the Cloud provider, not only the cluster.
-# You can basicly run bash lab destroy cluster a b // It will destroy everything for the provider that you are initialized.
 @cli.command()
-@click.argument('param_type', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.argument('name', type=click.STRING, required=True)
-@click.argument('region', type=click.STRING, required=True)
+@click.argument('param_type', type=click.Choice(['cluster']))
+@click.option('--name', type=click.STRING, help='What is the cluster named as?')
+@click.option('--region', type=click.STRING, help='Where is the cluster located?')
 def destroy(param_type, name, region):
-    region_file_path = 'credentials/aws_kube_config'
-    with open(region_file_path, 'w') as f:
-        f.write(f"{region}")
+    if param_type == "cluster":
+        if name is None and region is None:
+            print("Please provide both the cluster name and region.")
+        elif name is None:
+            print("Please provide the cluster name.")
+        elif region is None:
+            print("Please provide the cluster region.")
+        else:
+            # Load cluster credentials from YAML file
+            with open('cluster_credentials/cluster.yaml', 'r') as file:
+                data = yaml.safe_load(file)
 
-    with open('state/lab_state.json', 'r') as file:
-        data = json.load(file)
-        initialized_cloud_provider = data.get('initialized_cloud_provider')
-    if param_type == 'role':
-        click.echo("This feature will be available soon")
-    elif param_type == 'cluster' and initialized_cloud_provider == "AWS":
-        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
-        os.chdir('../AWS')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
-    elif param_type == 'cluster' and initialized_cloud_provider == "Azure":
-        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
-        os.chdir('../Azure')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
-    elif param_type == 'cluster' and initialized_cloud_provider == "GCP":
-        print(f"Deleting cluster with name {name} provider {initialized_cloud_provider} and {region} region")
-        os.chdir('../GCP')
-        subprocess.run(['terraform', 'destroy', '-auto-approve'])
-    elif param_type == 'rbac':
-        click.echo("This feature will be available soon")
+            # Find the matching cluster based on name and region
+            matching_clusters = [cluster for cluster in data if cluster.get('cluster_name') == name and cluster.get('cluster_region') == region]
+
+            if matching_clusters:
+                cluster = matching_clusters[0]  # Use the first matching cluster
+
+                cluster_provider = cluster.get('cluster_provider')
+
+                if cluster_provider == "AWS":
+                    # Perform AWS-specific destruction command
+                    aws_cluster_name = cluster.get('cluster_name')
+                    aws_cluster_region = cluster.get('cluster_region')
+
+                    print(f"You have selected to destroy cluster: {aws_cluster_name} that is located in: {aws_cluster_region}")
+                    check_command = f"aws eks describe-cluster --name {aws_cluster_name} --region {aws_cluster_region}"
+                    try:
+                        subprocess.check_output(check_command, stderr=subprocess.STDOUT, shell=True)
+                    except subprocess.CalledProcessError as e:
+                        if "ResourceNotFoundException" in e.output.decode():
+                            print(f"The EKS cluster named {aws_cluster_name} in region {aws_cluster_region} does not exist.")
+                        else:
+                            print("Error occurred during describe-cluster command. Please check the command and try again.")
+                        return
+
+                    confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                    if confirmation == 'yes':
+                        check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
+
+                        try:
+                            check_output = subprocess.check_output(check_command, stderr=subprocess.STDOUT, shell=True)
+                        except subprocess.CalledProcessError:
+                            print("Error occurred during list-nodegroups command. Please check the command and try again.")
+                            return
+
+                        if check_output:
+                            node_groups = json.loads(check_output)['nodegroups']
+                            
+                            for node_group in node_groups:
+                                check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
+
+                                delete_node_group_command = f"aws eks delete-nodegroup --cluster-name {aws_cluster_name} --nodegroup-name {node_group} --region {aws_cluster_region}"
+                                print(f"Node group {node_group} is being destroyed..")
+                                subprocess.Popen(delete_node_group_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True).communicate() 
+
+                                while True:
+                                    # Run the AWS CLI command to list node groups
+                                    check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
+                                    result = subprocess.run(check_command, shell=True, capture_output=True, text=True)
+
+                                    if result.returncode == 0:
+                                        # Parse the JSON output
+                                        output = json.loads(result.stdout)
+
+                                        if "nodegroups" in output and len(output["nodegroups"]) == 0:
+                                            print(f"The Node Groups of the {aws_cluster_name} cluster have been destroyed.")
+                                            break
+
+                                    else:
+                                        print("An error occurred while executing the command.")
+                        delete_command = f"aws eks delete-cluster --name {aws_cluster_name} --region {aws_cluster_region}"
+                        print(f"The EKS cluster {aws_cluster_name} in region {aws_cluster_region} is being destroyed..")
+                        subprocess.check_call(delete_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
+
+                        while True:
+                            check_cluster_command = f"aws eks describe-cluster --name {aws_cluster_name} --region {aws_cluster_region}"
+                            try:
+                                check_output = subprocess.check_output(check_cluster_command, stderr=subprocess.STDOUT, shell=True)
+                            except subprocess.CalledProcessError as e:
+                                if "ResourceNotFoundException" in e.output.decode():
+                                    print(f"The EKS cluster named {aws_cluster_name} in region {aws_cluster_region} has been destroyed.")
+                                    break
+                                else:
+                                    print("Error occurred during describe-cluster command. Please check the command and try again.")
+                                    return
+
+                    elif confirmation == 'no':
+                        print("The destruction of the cluster has been canceled.")
+                    else:
+                        print("Invalid response. Please provide a valid response (yes/no).")
+
+                elif cluster_provider == "Azure":
+                    azure_cluster_name = cluster.get('cluster_name')
+                    azure_resource_group = cluster.get('cluster_resource_group')
+
+                    try:
+                        describe_command = f"az aks show --name {azure_cluster_name} --resource-group {azure_resource_group} --query provisioningState --output tsv"
+                        result = subprocess.check_output(describe_command, stderr=subprocess.STDOUT, shell=True)
+                        provisioning_state = result.decode().strip()
+
+                        if provisioning_state == "Succeeded":
+                            print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} exists.")
+                            try:
+                                confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                                if confirmation == 'yes':
+                                    delete_command = f"az aks delete --name {azure_cluster_name} --resource-group {azure_resource_group} --yes"
+                                    print(f"Deleting AKS cluster named {azure_cluster_name} in resource group {azure_resource_group}.")
+                                    subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
+                                    print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} has been deleted successfully.")
+                                elif confirmation == 'no':
+                                    print("The destruction of the cluster has been canceled.")
+                                else:
+                                    print("Invalid response. Please provide a valid response (yes/no).")
+
+                            except subprocess.CalledProcessError as e:
+                                print("Error occurred during 'az aks delete' command. Please check the command and try again.")
+                        else:
+                            print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} does not exist.")
+                            return
+
+                    except subprocess.CalledProcessError as e:
+                        print("Error occurred during 'az aks show' command. Please check the command and try again.")
+
+                elif cluster_provider == "GCP":
+                    gcp_cluster_name = cluster.get('cluster_name')
+                    gcp_cluster_region = cluster.get('cluster_region')
+
+                    # Check if the cluster exists in the cluster credentials
+                    matching_cluster = next((c for c in data if c.get('cluster_name') == gcp_cluster_name and c.get('cluster_region') == gcp_cluster_region), None)
+
+                    if matching_cluster:
+                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} exists.")
+
+                        confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                        if confirmation == 'yes':
+                            # Retrieve the available zones for the specified region using the Google Cloud API
+                            zone_command = f"gcloud compute zones list --filter='{gcp_cluster_region}' --format='value(name)'"
+                            try:
+                                zones_output = subprocess.check_output(zone_command, shell=True).decode().strip()
+                                zones = zones_output.splitlines()
+
+                                if not zones:
+                                    print(f"No zones found for region {gcp_cluster_region}.")
+                                    return
+
+                                cluster_deleted = False
+
+                                for zone in zones:
+                                    describe_command = f"gcloud container clusters describe {gcp_cluster_name} --zone {zone} --format='value(zone)'"
+                                    try:
+                                        subprocess.check_output(describe_command, stderr=subprocess.STDOUT, shell=True)
+                                    except subprocess.CalledProcessError as e:
+                                        continue  # Cluster not found in this zone, move on to the next zone
+
+                                    # Cluster found in this zone, delete it
+                                    delete_command = f"gcloud container clusters delete {gcp_cluster_name} --zone {zone} --quiet"
+                                    subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
+                                    cluster_deleted = True
+
+                                if cluster_deleted:
+                                    print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} has been deleted successfully.")
+                                else:
+                                    print(f"No GKE cluster named {gcp_cluster_name} found in any zone of region {gcp_cluster_region}.")
+
+                            except subprocess.CalledProcessError as e:
+                                print("An error occurred while retrieving the available zones. Please check the command and try again.")
+
+                        elif confirmation == 'no':
+                            print("The destruction of the cluster has been canceled.")
+                        else:
+                            print("Invalid response. Please provide a valid response (yes/no).")
+
+                    else:
+                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} does not exist.")
+
+                # Remove the destroyed cluster from the cluster.yaml file
+                data.remove(cluster)
+                with open('cluster_credentials/cluster.yaml', 'w') as file:
+                    yaml.dump(data, file)
+
+
+@cli.command()
+def test():
+    deployer = Deploy(type)
+    deployer.operator('operator')
+    deployer.deployment('deployment')
 
 
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
+@click.option('--version', type=click.STRING, default='1.5.0', help="Operator version", required=False)
 def add(type, product, version):
     product_cat = dict()
     installed_type = dict()
+    # FIXME switch between deployment/operator must be done in the specific file
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -351,93 +515,47 @@ def add(type, product, version):
                 product_cat['product'] = line.split(':')[1].strip()
             elif line.startswith('installed_type'):
                 installed_type['installed_type'] = line.split(':')[1].strip()
-    print(f"{product_cat['product']} and {installed_type['installed_type']}")
-    if os.path.isfile("catalog/catalog.yaml") and installed_type['installed_type'] == "deployment":
+    if installed_type['installed_type'] == "deployment":
         answer = input("NGINX is already installed, do you want to switch from the current installation (deployment - latest) to an operator based one? (Y/N): ")
         if answer == 'y':
-            print("Deleting the deployment and switching to operator")
+            print("Deleting the deployment and switching to operator \n")
             type = 'operator'
             deploy_repo = "catalog/nginx/nginx_deployment"
             os.chdir(deploy_repo)
-            subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
+            process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True )
+            exit_code = process.wait()
+            if exit_code == 0:
+                print("Successfully deleted nginx deployment \n")
+            else:
+                print("Deployment failed")
             os.chdir('../../..')
         elif answer == 'n':
             print("Staying in deployment")
             exit()
-    if os.path.isfile("catalog/catalog.yaml") and installed_type['installed_type'] == "operator":
+    if installed_type['installed_type'] == "operator":
         answer = input(f"NGINX is already installed, do you want to switch from the current installation (operator - {version}) to an deployment based one? (Y/N): ")
         if answer == 'y':
-            print("Deleting operator and switching to deployment")
+            print("Deleting operator and switching to deployment \n")
             type = 'deployment'
             repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
             os.chdir(repo_dir)
             # Delete the deployed operator
-            subprocess.run(['make', 'undeploy'])
+            process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
+            exit_code = process.wait()
+            if exit_code == 0:
+                print(f"Successfully deleted nginx operator {version} version\n")
+            else:
+                print("Deployment failed")
+            os.chdir('../../../')
         elif answer == 'n':
-            print("Staying in deployment")
+            print("Keeping the deployment installed.")
             exit()
     elif type == 'operator' and product == 'nginx':
-        print(f'Adding NGINX operator with {version} version')
-        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
-        # if not os.path.exists(repo_dir) and version != '1.4.1':
-        subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
-                        '--branch', f'v{version}'])
-        os.chdir(repo_dir)
-        subprocess.run(['git', 'checkout', f'v{version}'])
-        # Deploy the Operator
-        img = f'nginx/nginx-ingress-operator:{version}'
-        subprocess.run(['make', 'deploy', f'IMG={img}'])
-        subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
-        print(f'Nginx operator installed successfully with {version} version')
-        data = [
-            {
-                'product': 'nginx',
-                'default_version': version,
-                'default_type': 'deployment',
-                'available_types': ['deployment', 'operator'],
-                'installed_version': version,
-                'installed_type': type
-            },
-        ]
-        with open('../../catalog.yaml', 'w') as file:
-            for item in data:
-                file.write("- product: {}\n".format(item['product']))
-                file.write("  default_version: {}\n".format(item['default_version']))
-                file.write("  default_type: {}\n".format(item['default_type']))
-                file.write("  available_types:\n")
-                for available_type in item['available_types']:
-                    file.write("    - {}\n".format(available_type))
-                file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n\n".format(item['installed_type']))
-        print("Spec for product saved in the catalog.yaml file")
+        deploy = Deploy(op_version=version)
+        deploy.operator()
     if type == 'deployment' and product == 'nginx':
-        print("Installing nginx with deployment and lattest version")
-        deploy_repo = "catalog/nginx/nginx_deployment"
-        os.chdir(deploy_repo)
-        subprocess.run(['kubectl', 'apply', '-f', 'deployment.yaml'])
-        data = [
-            {
-                'product': 'nginx',
-                'default_version': 'latest',
-                'default_type': 'deployment',
-                'available_types': ['deployment', 'operator'],
-                'installed_version': 'latest',
-                'installed_type': type
-            },
-        ]
-        with open('../../catalog.yaml', 'w') as file:
-            for item in data:
-                file.write("- product: {}\n".format(item['product']))
-                file.write("  default_version: {}\n".format(item['default_version']))
-                file.write("  default_type: {}\n".format(item['default_type']))
-                file.write("  available_types:\n")
-                for available_type in item['available_types']:
-                    file.write("    - {}\n".format(available_type))
-                file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n\n".format(item['installed_type']))
-        print("Spec for product saved in the catalog.yaml file")
-    else:
-        print("Instaling nginx defaults from deployment")
+        deploy = Deploy()
+        deploy.deployment()
 
 
 @cli.command()
@@ -446,7 +564,7 @@ def add(type, product, version):
 @click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def update(type, product, version):
     if type == 'operator' and product == 'nginx':
-        print(f'Upadating NGINX with latest {version} version')
+        print(f'Upadating NGINX with latest version ({version})')
         repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
         if not os.path.exists(repo_dir):
             subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
@@ -498,7 +616,7 @@ def delete(type, product, version):
                 file.write("  installed_type: {}\n\n".format(item['installed_type']))
         print(f'Nginx operator deleted successfully with {version} version')
     elif type == 'deployment' and product == 'nginx':
-        print("Deleting nginx deployment with lattest version")
+        print("Deleting nginx deployment with latest image version")
         deploy_repo = "catalog/nginx/nginx_deployment"
         os.chdir(deploy_repo)
         subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
@@ -527,28 +645,27 @@ def delete(type, product, version):
 
 
 @cli.command()
-@click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
 @click.argument('cluster', type=click.STRING)
 @click.option('--region', type=click.STRING, help='Region of the cluster')
 @click.option('--resource-group', type=click.STRING, help='Resource group of the cluster')
-def use(name, cluster, region, resource_group):
+def use(cluster, region, resource_group):
     with open('state/lab_state.json', 'r') as file:
         data = json.load(file)
         initialized_cloud_provider = data.get('initialized_cloud_provider')
 
     if initialized_cloud_provider == "AWS":
         if region is None:
-            print("Region is required for AWS, use --region YOUR-CLUSTER-REGION while running the command.")
+            print("Region is required for AWS, use --region <YOUR-CLUSTER-REGION> while running the command.")
             return
         subprocess.run(["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster])
     elif initialized_cloud_provider == "Azure":
         if resource_group is None:
-            print("Resource group is required for Azure, use --resource-group YOUR-RESOURCE-GROUP while running the command.")
+            print("Resource group is required for Azure, use --resource-group <YOUR-RESOURCE-GROUP> while running the command.")
             return
         subprocess.run(["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster, "--overwrite-existing"])
     elif initialized_cloud_provider == "GCP":
         if region is None:
-            print("Region is required for GCP, use --region YOUR-CLUSTER-REGION while running the command.")
+            print("Region is required for GCP, use --region <YOUR-CLUSTER-REGION> while running the command.")
             return
         subprocess.run(["gcloud", "container", "clusters", "get-credentials", cluster, "--region=" + region])
     else:
@@ -558,7 +675,7 @@ def use(name, cluster, region, resource_group):
 
 @cli.command()
 def info():
-    print("Information about the kubernetes are from cnquery lib")
+    print("Information about your cluster come from cnquery lib - thanks mondoo")
     subprocess.run(['cnquery', 'shell', 'k8s'])
 
 
