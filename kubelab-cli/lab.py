@@ -90,7 +90,7 @@ def create(name, cloud_provider):
 
         print(f"Creating cluster in {cloud_provider} and {region} region")
         os.chdir('../AWS')
-        subprocess.Popen('terraform apply -auto-approve > log/kubelab.log 2>&1 & ', shell=True)
+        subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
         # Retrieve the cluster name from the Terraform output
         try:
