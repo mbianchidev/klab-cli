@@ -90,8 +90,8 @@ def create(name, cloud_provider):
 
         print(f"Creating cluster in {cloud_provider} and {region} region")
         os.chdir('../AWS')
-        subprocess.Popen('terraform apply -auto-approve > log.txt 2>&1 & ', shell=True)
-        click.echo("Cluster will be created in 10 minutes and for logs check log.txt file")
+        subprocess.Popen('terraform apply -auto-approve > log/kubelab.log 2>&1 & ', shell=True)
+        click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
         # Retrieve the cluster name from the Terraform output
         try:
             completed_process = subprocess.run(['terraform', 'output', '-json'], capture_output=True, text=True, check=True)
@@ -145,8 +145,8 @@ def create(name, cloud_provider):
     elif name == 'cluster' and cloud_provider == "Azure":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../Azure')
-        subprocess.Popen('terraform apply -auto-approve > log.txt 2>&1 & ', shell=True)
-        click.echo("Cluster will be created in 15 minutes and for logs check log.txt file")
+        subprocess.Popen('terraform apply -auto-approve > log/kubelab.log 2>&1 & ', shell=True)
+        click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
 
         # Retrieve the cluster name from the Terraform output
         try:
@@ -202,8 +202,8 @@ def create(name, cloud_provider):
     elif name == 'cluster' and cloud_provider == "GCP":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../GCP')
-        subprocess.Popen('terraform apply -auto-approve > log.txt 2>&1 & ', shell=True)
-        click.echo("Cluster will be created in 10 minutes and for logs check log.txt file")
+        subprocess.Popen('terraform apply -auto-approve > log/kubelab.log 2>&1 & ', shell=True)
+        click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
 
         # Retrieve the cluster name from the Terraform output
         try:
