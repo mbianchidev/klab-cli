@@ -8,7 +8,6 @@ from catalog.nginx.deploy import Deploy
 import shutil
 import fnmatch
 import yaml
-import pytest
 
 
 @click.group()

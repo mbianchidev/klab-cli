@@ -25,8 +25,11 @@ module "gke" {
     },
   ]
 }
+<<<<<<< HEAD
 
 output "cluster_name" {
   description = "Cluster name"
   value       = module.gke.name
 }
+=======
+>>>>>>> 4c7de70 (Update lab CLI, GCP and tests)

@@ -77,4 +77,8 @@ class Deploy:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
                 file.write("  installed_type: {}\n\n".format(item['installed_type']))
+<<<<<<< HEAD
         pass
+=======
+        pass
+>>>>>>> 4c7de70 (Update lab CLI, GCP and tests)
