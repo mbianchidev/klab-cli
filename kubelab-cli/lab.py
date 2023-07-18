@@ -647,31 +647,52 @@ def delete(type, product, version):
 
 
 @cli.command()
+@click.argument('type', type=click.Choice(['cluster']))
 @click.argument('cluster', type=click.STRING)
 @click.option('--region', type=click.STRING, help='Region of the cluster')
-@click.option('--resource-group', type=click.STRING, help='Resource group of the cluster')
-def use(cluster, region, resource_group):
-    with open('state/lab_state.json', 'r') as file:
-        data = json.load(file)
-        initialized_cloud_provider = data.get('initialized_cloud_provider')
+def use(type, cluster, region):
+    if type != 'cluster':
+        print("Invalid argument type. Please provide 'cluster' as the argument type.")
+        return
 
-    if initialized_cloud_provider == "AWS":
-        if region is None:
-            print("Region is required for AWS, use --region <YOUR-CLUSTER-REGION> while running the command.")
-            return
-        subprocess.run(["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster])
-    elif initialized_cloud_provider == "Azure":
-        if resource_group is None:
-            print("Resource group is required for Azure, use --resource-group <YOUR-RESOURCE-GROUP> while running the command.")
-            return
-        subprocess.run(["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster, "--overwrite-existing"])
-    elif initialized_cloud_provider == "GCP":
-        if region is None:
-            print("Region is required for GCP, use --region <YOUR-CLUSTER-REGION> while running the command.")
-            return
-        subprocess.run(["gcloud", "container", "clusters", "get-credentials", cluster, "--region=" + region])
+    cluster_dir = 'cluster_credentials'
+    os.makedirs(cluster_dir, exist_ok=True)
+
+    cluster_file = os.path.join(cluster_dir, 'cluster.yaml')
+
+    if os.path.exists(cluster_file):
+        with open(cluster_file, 'r') as file:
+            try:
+                data = yaml.safe_load(file)
+            except yaml.YAMLError as e:
+                print("Error loading cluster.yaml:", str(e))
+                return
     else:
-        print("Unsupported cloud provider.")
+        data = []
+
+    cluster_info = next((c for c in data if c.get('cluster_name') == cluster), None)
+    if cluster_info is None:
+        # Case 1: Cluster not managed by us
+        cluster_info = {
+            'managed_by': 'USER',
+        }
+        data.append(cluster_info)
+    else:
+        # Case 2: Cluster managed by us
+        cluster_info['managed_by'] = 'KUBELAB'
+
+    with open(cluster_file, 'w') as file:
+        try:
+            yaml.safe_dump(data, file)
+        except yaml.YAMLError as e:
+            print("Error saving cluster.yaml:", str(e))
+            return
+
+    # Update the Kubernetes configuration based on the cluster's cloud provider
+    if region:
+        subprocess.run(["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster])
+    else:
+        print("Region is required. Please provide the --region option.")
         return
 
 
