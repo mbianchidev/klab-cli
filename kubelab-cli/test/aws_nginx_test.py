@@ -18,7 +18,6 @@ class TestAWSNginx:
         print("AWS create cluster result:", result.stdout)
         assert result.returncode == 0
 
-<<<<<<< HEAD
     # def test_create_azure_cluster(self):
     #     print("Running test create cluster in Azure")
     #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
@@ -67,7 +66,7 @@ class TestAWSNginx:
     #     cluster_region = "YOUR_CLUSTER_REGION"
     #     result = subprocess.run(['python3', 'lab.py', 'destroy', 'cluster', cluster_name, cluster_region], capture_output=True, text=True)
     #     assert result.returncode == 0
-=======
+
     def test_create_azure_cluster(self):
         print("Running test create cluster in Azure")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
@@ -75,12 +74,12 @@ class TestAWSNginx:
         print("Azure create cluster result:", result.stdout)
         assert result.returncode == 0
 
-    def test_create_gcp_cluster(self):
-        print("Running test create cluster in GCP")
-        os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'GCP'], capture_output=True, text=True)
-        print("GCP create cluster result:", result.stdout)
-        assert result.returncode == 0
+    # def test_create_gcp_cluster(self):
+    #     print("Running test create cluster in GCP")
+    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
+    #     result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'GCP'], capture_output=True, text=True)
+    #     print("GCP create cluster result:", result.stdout)
+    #     assert result.returncode == 0
 
     # def test_nginx_deployment(self):
     #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
@@ -110,22 +109,19 @@ class TestAWSNginx:
     #     result = subprocess.run(['python3', 'lab.py', 'delete', '--type', 'operator', 'nginx'], capture_output=True, text=True)
     #     assert result.returncode == 0
 
-<<<<<<< HEAD
     def test_destroy_cluster(self):
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         cluster_name = "YOUR_CLUSTER_NAME"
         cluster_region = "YOUR_CLUSTER_REGION"
         result = subprocess.run(['python3', 'lab.py', 'destroy', 'cluster', cluster_name, cluster_region], capture_output=True, text=True)
         assert result.returncode == 0
->>>>>>> 551ca6c (Add test cases for lab cli)
-=======
+
     # def test_destroy_cluster(self):
     #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
     #     cluster_name = "YOUR_CLUSTER_NAME"
     #     cluster_region = "YOUR_CLUSTER_REGION"
     #     result = subprocess.run(['python3', 'lab.py', 'destroy', 'cluster', cluster_name, cluster_region], capture_output=True, text=True)
     #     assert result.returncode == 0
->>>>>>> 4c7de70 (Update lab CLI, GCP and tests)
 
 if __name__ == '__main__':
     pytest.main()
