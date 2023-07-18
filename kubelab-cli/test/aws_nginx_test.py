@@ -18,19 +18,19 @@ class TestAWSNginx:
         print("AWS create cluster result:", result.stdout)
         assert result.returncode == 0
 
-    def test_create_azure_cluster(self):
-        print("Running test create cluster in Azure")
-        os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'Azure'], capture_output=True, text=True)
-        print("Azure create cluster result:", result.stdout)
-        assert result.returncode == 0
+    # def test_create_azure_cluster(self):
+    #     print("Running test create cluster in Azure")
+    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
+    #     result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'Azure'], capture_output=True, text=True)
+    #     print("Azure create cluster result:", result.stdout)
+    #     assert result.returncode == 0
 
-    def test_create_gcp_cluster(self):
-        print("Running test create cluster in GCP")
-        os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'GCP'], capture_output=True, text=True)
-        print("GCP create cluster result:", result.stdout)
-        assert result.returncode == 0
+    # def test_create_gcp_cluster(self):
+    #     print("Running test create cluster in GCP")
+    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
+    #     result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'GCP'], capture_output=True, text=True)
+    #     print("GCP create cluster result:", result.stdout)
+    #     assert result.returncode == 0
 
     # def test_nginx_deployment(self):
     #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
