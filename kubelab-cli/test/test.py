@@ -13,4 +13,4 @@ if __name__ == '__main__':
     # test_instance.test_update_nginx_version()
     # test_instance.test_switch_to_operator()
     # test_instance.test_remove_operator_installation()
-    # test_instance.test_destroy_cluster()
+    test_instance.test_destroy_cluster()
