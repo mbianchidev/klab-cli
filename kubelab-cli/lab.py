@@ -347,8 +347,10 @@ def destroy(param_type, name, region):
                         else:
                             print("Error occurred during describe-cluster command. Please check the command and try again.")
                         return
-
-                    confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                    
+                    # Here I have commented this to avoid the YES/NO prompt
+                    # confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                    confirmation = 'yes'
                     if confirmation == 'yes':
                         check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
 
