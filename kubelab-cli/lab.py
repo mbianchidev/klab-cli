@@ -670,13 +670,19 @@ def use(type, cluster, region):
     else:
         data = []
 
-    cluster_info = next((c for c in data if c.get('cluster_name') == cluster), None)
+    cluster_info = next((c for c in data if c.get('cluster_name') == cluster and c.get('cluster_region') == region), None)
+
     if cluster_info is None:
         # Case 1: Cluster not managed by us
         cluster_info = {
-            'managed_by': 'USER',
+            'cluster_credentials': "credentials/aws_kube_credential",
+            'cluster_name': f"{cluster}",
+            'cluster_provider': "AWS",
+            'cluster_region': f"{region}",
+            'managed_by': "USER",
         }
         data.append(cluster_info)
+
     else:
         # Case 2: Cluster managed by us
         cluster_info['managed_by'] = 'KUBELAB'
