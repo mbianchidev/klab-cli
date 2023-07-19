@@ -642,8 +642,10 @@ def delete(type, product, version):
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.argument('cluster', type=click.STRING)
-@click.option('--region', type=click.STRING, help='Region of the cluster')
-def use(type, cluster, region):
+@click.option('--provider', type=click.Choice(['aws', 'azure']), default='aws', help='Cloud provider of the cluster (aws or azure)')
+@click.option('--region', type=click.STRING, help='Region of the cluster (for AWS)')
+@click.option('--resource-group', type=click.STRING, help='Resource group of the cluster (for Azure)')
+def use(type, cluster, provider, region, resource_group):
     if type != 'cluster':
         print("Invalid argument type. Please provide 'cluster' as the argument type.")
         return
@@ -665,33 +667,55 @@ def use(type, cluster, region):
     else:
         data = []
 
-    cluster_info = next((c for c in data if c.get('cluster_name') == cluster and c.get('cluster_region') == region), None)
+    cluster_info = next((c for c in data if c.get('cluster_name') == cluster), None)
 
     if cluster_info is None:
-        # Case 1: Cluster not managed by us
-        cluster_info = {
-            'cluster_credentials': "credentials/aws_kube_credential",
-            'cluster_name': f"{cluster}",
-            'cluster_provider': "AWS",
-            'cluster_region': f"{region}",
-            'managed_by': "USER",
-        }
+        # Cluster not managed, add it to data list
+        if provider == 'aws':
+            if not region:
+                print("Region is required. Please provide the --region option.")
+                return
+            cluster_info = {
+                'cluster_credentials': "credentials/aws_kube_credential",
+                'cluster_name': f"{cluster}",
+                'cluster_provider': provider.upper(),
+                'cluster_region': f"{region}",
+                'managed_by': "USER",
+            }
+        elif provider == 'azure':
+            if not resource_group:
+                print("Resource group is required. Please provide the --resource-group option.")
+                return
+            cluster_info = {
+                'cluster_credentials': "credentials/azure_kube_credential",
+                'cluster_name': f"{cluster}",
+                'cluster_provider': provider.upper(),
+                'cluster_region': f"{resource_group}",
+                'managed_by': "USER",
+            }
+        else:
+            print("Invalid provider. Please provide 'aws' or 'azure' as the provider.")
+            return
+
         data.append(cluster_info)
 
     else:
-        # Case 2: Cluster managed by us
+        # Cluster managed by us
         cluster_info['managed_by'] = 'KUBELAB'
 
     # Update the Kubernetes configuration based on the cluster's cloud provider
-    if region:
+    if provider == 'aws':
         update_kubeconfig_cmd = ["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster]
-        update_kubeconfig_process = subprocess.run(update_kubeconfig_cmd)
-
-        if update_kubeconfig_process.returncode != 0:
-            print("Failed to connect to the cluster. The cluster.yaml file will not be modified.")
-            return
+    elif provider == 'azure':
+        update_kubeconfig_cmd = ["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster]
     else:
-        print("Region is required. Please provide the --region option.")
+        print("Invalid provider. Please provide 'aws' or 'azure' as the provider.")
+        return
+
+    update_kubeconfig_process = subprocess.run(update_kubeconfig_cmd)
+
+    if update_kubeconfig_process.returncode != 0:
+        print(f"Failed to connect to the {provider.upper()} cluster. The cluster.yaml file will not be modified.")
         return
 
     with open(cluster_file, 'w') as file:
