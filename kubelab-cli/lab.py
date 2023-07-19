@@ -682,19 +682,24 @@ def use(type, cluster, region):
         # Case 2: Cluster managed by us
         cluster_info['managed_by'] = 'KUBELAB'
 
+    # Update the Kubernetes configuration based on the cluster's cloud provider
+    if region:
+        update_kubeconfig_cmd = ["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster]
+        update_kubeconfig_process = subprocess.run(update_kubeconfig_cmd)
+
+        if update_kubeconfig_process.returncode != 0:
+            print("Failed to connect to the cluster. The cluster.yaml file will not be modified.")
+            return
+    else:
+        print("Region is required. Please provide the --region option.")
+        return
+
     with open(cluster_file, 'w') as file:
         try:
             yaml.safe_dump(data, file)
         except yaml.YAMLError as e:
             print("Error saving cluster.yaml:", str(e))
             return
-
-    # Update the Kubernetes configuration based on the cluster's cloud provider
-    if region:
-        subprocess.run(["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster])
-    else:
-        print("Region is required. Please provide the --region option.")
-        return
 
 
 @cli.command()
