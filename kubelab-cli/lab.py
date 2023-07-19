@@ -699,6 +699,10 @@ def use(type, cluster, provider, region, resource_group):
 
         data.append(cluster_info)
 
+    elif cluster_info.get('managed_by') == 'USER':
+        # Cluster already managed by USER, no modification needed
+        pass
+
     else:
         # Cluster managed by us
         cluster_info['managed_by'] = 'KUBELAB'
