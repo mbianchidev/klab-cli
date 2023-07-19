@@ -657,6 +657,8 @@ def use(type, cluster, region):
         with open(cluster_file, 'r') as file:
             try:
                 data = yaml.safe_load(file)
+                if not data:
+                    data = []  # Initialize an empty list if the file is empty
             except yaml.YAMLError as e:
                 print("Error loading cluster.yaml:", str(e))
                 return
