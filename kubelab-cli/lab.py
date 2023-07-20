@@ -9,6 +9,8 @@ import shutil
 import fnmatch
 import yaml
 import sys
+import base64
+
 
 @click.group()
 def cli():
@@ -148,6 +150,7 @@ def create(name, cloud_provider):
     elif name == 'cluster' and cloud_provider == "Azure":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../Azure')
+        log_file = 'log'
         if not os.path.exists(log_file):
             os.makedirs(log_file)
         subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
@@ -510,6 +513,7 @@ def add(type, product, version):
     installed_type = dict()
     deploymentFile = dict()
     operatorRepo = dict()
+    operatorDir = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -520,22 +524,24 @@ def add(type, product, version):
                 installed_type['installed_type'] = line.split(':')[1].strip()
             elif line.startswith('deploymentFile'):
                 deploymentFile['deploymentFile'] = line.split(':')[1].strip()
+            elif line.startswith('operatorDir'):
+                operatorDir['operatorDir'] = line.split(':')[1].strip()
             elif line.startswith('operatorRepo'):
-                operatorRepo['operatorRepo'] = line.split(':')[1].strip()
+                operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
     if installed_type['installed_type'] == "deployment":
-        deploy = Deploy()
-        deploy.switch_operator()
+        deploy = Deploy(productName=product)
+        deploy.switch_operator(productName=product)
         type = 'operator'
     if installed_type['installed_type'] == "operator":
         type = 'deployment'
-        deploy = Deploy(op_version=version)
-        deploy.switch_deployment()
+        deploy = Deploy(op_version=version, productName=product)
+        deploy.switch_deployment(productName=product)
     elif type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=version, operatorRepo=operatorRepo['operatorRepo'])
-        deploy.operator()
+        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'])
-        deploy.deployment()
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
 @cli.command()
@@ -568,6 +574,25 @@ def update(type, product, version):
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def delete(type, product, version):
+    product_cat = dict()
+    installed_type = dict()
+    deploymentFile = dict()
+    operatorRepo = dict()
+    operatorDir = dict()
+    with open("catalog/catalog.yaml", 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            line = line.strip()
+            if line.startswith('- product'):
+                product_cat['product'] = line.split(':')[1].strip()
+            elif line.startswith('installed_type'):
+                installed_type['installed_type'] = line.split(':')[1].strip()
+            elif line.startswith('deploymentFile'):
+                deploymentFile['deploymentFile'] = line.split(':')[1].strip()
+            elif line.startswith('operatorDir'):
+                operatorDir['operatorDir'] = line.split(':')[1].strip()    
+            elif line.startswith('operatorRepo'):
+                operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
     if type == 'operator' and product == 'nginx':
         print(f'Deleting NGINX with {version} version')
         repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
@@ -582,9 +607,10 @@ def delete(type, product, version):
                 'available_types': ['deployment', 'operator'],
                 'installed_version': '',
                 'installed_type': '',
-                'operatorRepo':' https://github.com/nginxinc/nginx-ingress-helm-operator/',
+                'operatorRepo': operatorRepo['operatorRepo'],
                 'operatorVersion': 'None',
-                'deploymentFile': 'catalog/nginx/nginx_deployment/deployment.yaml'
+                'operatorDir': operatorDir['operatorDir'],
+                'deploymentFile': deploymentFile['deploymentFile']
             },
         ]
         with open('../../catalog.yaml', 'w') as file:
@@ -599,6 +625,7 @@ def delete(type, product, version):
                 file.write("  installed_type: {}\n".format(item['installed_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
         print(f'Nginx operator deleted successfully with {version} version')
     elif type == 'deployment' and product == 'nginx':
@@ -614,9 +641,10 @@ def delete(type, product, version):
                 'available_types': ['deployment', 'operator'],
                 'installed_version': '',
                 'installed_type': '',
-                'operatorRepo':' https://github.com/nginxinc/nginx-ingress-helm-operator/',
+                'operatorRepo': operatorRepo['operatorRepo'],
                 'operatorVersion': 'None',
-                'deploymentFile': 'catalog/nginx/nginx_deployment/deployment.yaml'
+                'operatorDir': operatorDir['operatorDir'],
+                'deploymentFile': deploymentFile['deploymentFile']
             },
         ]
         with open('../../catalog.yaml', 'w') as file:
@@ -631,6 +659,7 @@ def delete(type, product, version):
                 file.write("  installed_type: {}\n".format(item['installed_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
     else:
         print('Invalid configuration.')
