@@ -128,7 +128,7 @@ Labctl is open-source software licensed under the [MIT License](LICENSE). Feel f
 
 ---
 
-Thank you for using labctl! If you have any questions or need further assistance, please refer to the documentation or reach out to the Discord community of KubeLabs for support.
+Thank you for using labctl! If you have any questions or need further assistance, please refer to the documentation or reach out to the [Discord community of KubeLab](https://discord.gg/aVEhdDDark) for support.
 
 ## Tools embedded in labctl
 https://github.com/mondoohq/cnquery

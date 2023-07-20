@@ -9,3 +9,6 @@ s3transfer==0.6.1
 six==1.16.0
 urllib3==1.26.16
 pytest==6.2.5
+build==0.10.0
+wheel==0.40.0
+setuptools==67.6.1
