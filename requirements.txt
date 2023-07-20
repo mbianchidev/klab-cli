@@ -12,3 +12,7 @@ pytest==6.2.5
 build==0.10.0
 wheel==0.40.0
 setuptools==67.6.1
+flake8==6.0.0 
+mccabe==0.7.0 
+pycodestyle==2.10.0 
+pyflakes==3.0.1

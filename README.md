@@ -31,8 +31,13 @@ Or you can use the labctl install script to install all the dependencies for you
 Run the following command to install the dependencies:
 
 ```bash
-curl -s https://raw.githubusercontent.com/kubelab-middleware/labctl/main/install.sh | bash
+curl -s https://raw.githubusercontent.com/kubelab-middleware/install.sh | bash
 ```
+
+## Prerequisites (contribution only)
+
+Linter+formatter: black + flake8
+https://py-vscode.readthedocs.io/en/latest/files/linting.html
 
 ## Installation
 
@@ -130,5 +135,6 @@ Labctl is open-source software licensed under the [MIT License](LICENSE). Feel f
 
 Thank you for using labctl! If you have any questions or need further assistance, please refer to the documentation or reach out to the [Discord community of KubeLab](https://discord.gg/aVEhdDDark) for support.
 
-## Tools embedded in labctl
+## Other OSS tools embedded in labctl
 https://github.com/mondoohq/cnquery
+https://github.com/derailed/k9s
