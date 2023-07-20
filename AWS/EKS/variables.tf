@@ -35,3 +35,7 @@ variable "instance_type" {
   description = "Variable for instance type"
   default = "t3.medium"
 }
+
+variable "cluster_name" {
+  type = string
+}

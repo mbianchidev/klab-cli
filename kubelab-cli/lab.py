@@ -77,31 +77,60 @@ def init():
         click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.')
 
 @cli.command()
-@click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
-@click.option('-cp', '--cloud-provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Cloud provider', required=True)
-def create(name, cloud_provider):
-    if name == 'role':
-        click.echo("This feature will be available soon")
-    elif name == 'cluster' and cloud_provider == "AWS":
-        region = 'eu-west-1'  # Default region for AWS
-        region_file_path = 'credentials/aws_kube_config'
-        with open(region_file_path, 'w') as f:
-            f.write(f"{region}")
+@click.argument('type', type=click.Choice(['cluster']))
+@click.option('--cluster-name', '-cn', help='Name of the cluster to be created', metavar='<cluster_name>')
+@click.option('--cloud-provider', '-cp', type=click.Choice(['aws', 'azure', 'gcp']), help='Cloud provider', metavar='<cloud_provider>')
+@click.option('--region', '-r', type=str, help='Cluster region (required for AWS and GCP)', metavar='<region>')
+@click.option('--resource-group', '-rg', type=str, help='Resource group name (required for Azure)', metavar='<resource_group>')
+@click.option('--project', '-p', type=str, help='GCP project ID (required for GCP)', metavar='<project_id>')
+def create(type, cluster_name, cloud_provider, region, resource_group, project):
+    if type != 'cluster':
+        click.echo("Invalid type specified. Only 'cluster' is supported.")
+        return
+    
+    if not cluster_name:
+        click.echo("Cluster name is required!")
+        click.echo("Make sure to add --cluster-name <my-cluster-name> or -cn <my-cluster-name> option.")
+        return
 
-        print(f"Creating cluster in {cloud_provider} and {region} region")
-        os.chdir('../AWS')
-        subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
-        click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
-        # Retrieve the cluster name from the Terraform output
-        try:
-            completed_process = subprocess.run(['terraform', 'output', '-json'], capture_output=True, text=True, check=True)
-            output_json = completed_process.stdout.strip()
-            output_dict = yaml.safe_load(output_json)
-            cluster_name = output_dict['cluster_name']['value']
-            cluster_region = output_dict['cluster_region']['value']
-        except (subprocess.CalledProcessError, KeyError) as e:
-            print(f"Error: Failed to retrieve cluster name. {e}")
+    try:
+        if cloud_provider == "aws":
+            if not region:
+                click.echo("Region is required for AWS!")
+                click.echo("Make sure to add --region <my-region> option.")
+                return
+            print(f"Creating cluster in {cloud_provider} and {region} region")
+            os.chdir('../AWS')
+            if not os.path.exists('log'):
+                os.makedirs('log')
+            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
+            click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
+        elif cloud_provider == "Azure":
+            if not resource_group:
+                click.echo("Resource group is required for Azure.")
+                return
+            print(f"Creating cluster in {cloud_provider}")
+            os.chdir('../Azure')
+            if not os.path.exists('log'):
+                os.makedirs('log')
+            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
+            click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
+        elif cloud_provider == "GCP":
+            if not project:
+                click.echo("GCP project ID is required for GCP.")
+                return
+            print(f"Creating cluster in {cloud_provider}")
+            os.chdir('../GCP')
+            if not os.path.exists('log'):
+                os.makedirs('log')
+            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
+            click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
+        else:
+            click.echo("Invalid cloud provider specified!")
+            click.echo("Make sure to add --cloud-provider <cloud-provider> or -cp <cloud-provider> option.")
             return
+        
+        # FROM THIS COMMENT UP IT WORKS, BELOW IT SHOULD BE FIXED SINCE IT GIVES ERROS!
 
         os.chdir('../kubelab-cli')
 
@@ -110,16 +139,22 @@ def create(name, cloud_provider):
         if not os.path.exists(credentials_dir):
             os.makedirs(credentials_dir)
 
-        # Retrieve AWS credentials file path
-        aws_credentials_file = os.path.join('credentials', 'aws_kube_credential')
+        # Retrieve the credentials file path based on the cloud provider
+        if cloud_provider == "AWS":
+            credentials_file = os.path.join('credentials', 'aws_kube_credential')
 
-        # Create the dictionary with cluster information
-        cluster_info = {
-            'cluster_name': cluster_name,
-            'cluster_provider': cloud_provider,
-            'cluster_region': cluster_region,
-            'cluster_credentials': aws_credentials_file
-        }
+            # Create the dictionary with cluster information
+            cluster_info = {
+                'cluster_credentials': credentials_file,
+                'cluster_name': cluster_name,
+                'cluster_provider': cloud_provider,
+                'cluster_region': region,
+                'cluster_credentials': credentials_file
+            }
+        elif cloud_provider == "Azure":
+            credentials_file = os.path.join('credentials', 'azure_kube_credential')
+        elif cloud_provider == "GCP":
+            credentials_file = os.path.join('credentials', 'gcp_kube_credential')        
 
         # Check if the cluster name already exists in cluster.yaml
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
@@ -142,122 +177,8 @@ def create(name, cloud_provider):
             # Print the deployed cluster name
             print(f"{cluster_name} has been deployed.")
 
-    elif name == 'cluster' and cloud_provider == "Azure":
-        print(f"Creating cluster in {cloud_provider}")
-        os.chdir('../Azure')
-        subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
-        click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
-
-        # Retrieve the cluster name from the Terraform output
-        try:
-            completed_process = subprocess.run(['terraform', 'output', '-json'], capture_output=True, text=True, check=True)
-            output_json = completed_process.stdout.strip()
-            output_dict = yaml.safe_load(output_json)
-            cluster_name = output_dict['cluster_name']['value']
-            cluster_region = output_dict['cluster_region']['value']
-            cluster_resource_group = output_dict['cluster_resource_group']['value']
-        except (subprocess.CalledProcessError, KeyError) as e:
-            print(f"Error: Failed to retrieve cluster name. {e}")
-            return
-
-        os.chdir('../kubelab-cli')
-
-        # Create cluster_credentials directory if it doesn't exist
-        credentials_dir = 'cluster_credentials'
-        if not os.path.exists(credentials_dir):
-            os.makedirs(credentials_dir)
-
-        # Retrieve Azure credentials file path
-        azure_credentials_file = os.path.join('credentials', 'azure_kube_credential')
-
-        # Create the dictionary with cluster information
-        cluster_info = {
-            'cluster_name': cluster_name,
-            'cluster_provider': cloud_provider,
-            'cluster_credentials': azure_credentials_file,
-            'cluster_region': cluster_region,
-            'cluster_resource_group': cluster_resource_group
-        }
-
-        # Check if the cluster name already exists in cluster.yaml
-        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
-        existing_clusters = []
-        if os.path.exists(yaml_file_path):
-            with open(yaml_file_path, 'r') as yaml_file:
-                existing_clusters = yaml.safe_load(yaml_file)
-                existing_clusters = existing_clusters if existing_clusters is not None else []
-
-        cluster_names = [cluster['cluster_name'] for cluster in existing_clusters]
-
-        if cluster_name in cluster_names:
-            print(f"The cluster name {cluster_name} already exists in cluster.yaml. Skipping append.")
-        else:
-            existing_clusters.append(cluster_info)
-            # Save updated cluster information to YAML file
-            with open(yaml_file_path, 'w') as yaml_file:
-                yaml.dump(existing_clusters, yaml_file)
-
-            # Print the deployed cluster name
-            print(f"{cluster_name} has been deployed.")
-    elif name == 'cluster' and cloud_provider == "GCP":
-        print(f"Creating cluster in {cloud_provider}")
-        os.chdir('../GCP')
-        subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
-        click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
-
-        # Retrieve the cluster name from the Terraform output
-        try:
-            completed_process = subprocess.run(['terraform', 'output', '-json'], capture_output=True, text=True, check=True)
-            output_json = completed_process.stdout.strip()
-            output_dict = yaml.safe_load(output_json)
-            cluster_name = output_dict['cluster_name']['value']
-            cluster_region = output_dict['cluster_region']['value']
-            cluster_project = output_dict['cluster_project']['value']
-        except (subprocess.CalledProcessError, KeyError) as e:
-            print(f"Error: Failed to retrieve cluster name. {e}")
-            return
-
-        os.chdir('../kubelab-cli')
-
-        # Create cluster_credentials directory if it doesn't exist
-        credentials_dir = 'cluster_credentials'
-        if not os.path.exists(credentials_dir):
-            os.makedirs(credentials_dir)
-
-        # Retrieve GCP credentials file path
-        gcp_credentials_file = os.path.join('credentials', 'gcp_kube_credential')
-
-        # Create the dictionary with cluster information
-        cluster_info = {
-            'cluster_name': cluster_name,
-            'cluster_provider': cloud_provider,
-            'cluster_credentials': gcp_credentials_file,
-            'cluster_region': cluster_region,
-            'cluster_project': cluster_project
-        }
-
-        # Check if the cluster name already exists in cluster.yaml
-        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
-        existing_clusters = []
-        if os.path.exists(yaml_file_path):
-            with open(yaml_file_path, 'r') as yaml_file:
-                existing_clusters = yaml.safe_load(yaml_file)
-                existing_clusters = existing_clusters if existing_clusters is not None else []
-
-        cluster_names = [cluster['cluster_name'] for cluster in existing_clusters]
-
-        if cluster_name in cluster_names:
-            print(f"The cluster name {cluster_name} already exists in cluster.yaml. Skipping append.")
-        else:
-            existing_clusters.append(cluster_info)
-            # Save updated cluster information to YAML file
-            with open(yaml_file_path, 'w') as yaml_file:
-                yaml.dump(existing_clusters, yaml_file)
-
-            # Print the deployed cluster name
-            print(f"{cluster_name} has been deployed.")
-    elif name == 'rbac':
-        click.echo("This feature will be available soon")
+    except (subprocess.CalledProcessError, KeyError) as e:
+        print(f"Error: Failed to retrieve cluster name. {e}")
 
 
 @cli.command()
