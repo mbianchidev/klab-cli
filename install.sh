@@ -277,6 +277,6 @@ if ! check_command "cnquery"; then
     bash -c "$(curl -sSL https://install.mondoo.com/sh)"
 fi
 
-## TODO install kubelab latest from package lol
+## TODO install kubelab latest from package :D
 
 echo "All required tools are installed."
