@@ -9,11 +9,9 @@ import shutil
 import fnmatch
 import yaml
 
-
 @click.group()
 def cli():
     pass
-
 
 @cli.command()
 def init():
