@@ -118,14 +118,19 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
         elif cloud_provider == "gcp":
             if not project:
-                click.echo("GCP project ID is required for GCP.")
+                click.echo("Project ID is required!")
+                click.echo("Make sure to add --project <project-id> or -p <project-id> option.")
+                return
+            if not region:
+                click.echo("Region is required!")
+                click.echo("Make sure to add --region <region> or -r <region> option.")
                 return
             print(f"Creating cluster in {cloud_provider}")
             os.chdir('../GCP')
             if not os.path.exists('log'):
                 os.makedirs('log')
             subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
-            click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
+            click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
         else:
             click.echo("Invalid cloud provider specified!")
             click.echo("Make sure to add --cloud-provider <cloud-provider> or -cp <cloud-provider> option.")
@@ -160,7 +165,8 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 'cluster_credentials': credentials_file,
                 'cluster_name': cluster_name,
                 'cluster_provider': cloud_provider,
-                'resource_group': resource_group
+                # 'cluster_location': cluster_location
+                'cluster_resource_group': resource_group
             }
         elif cloud_provider == "gcp":
             credentials_file = os.path.join('credentials', 'gcp_kube_credential')
@@ -170,11 +176,11 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 'cluster_credentials': credentials_file,
                 'cluster_name': cluster_name,
                 'cluster_provider': cloud_provider,
-                'region': region,
-                'project': project
+                'cluster_region': region,
+                'cluster_project': project
             }
 
-        # Check if the cluster name already exists in cluster.yaml
+        # Check if the cluster name and region already exist in cluster.yaml
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
         existing_clusters = []
         if os.path.exists(yaml_file_path):
@@ -182,18 +188,19 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 existing_clusters = yaml.safe_load(yaml_file)
                 existing_clusters = existing_clusters if existing_clusters is not None else []
 
-        cluster_names = [cluster['cluster_name'] for cluster in existing_clusters]
+        existing_clusters_set = {(cluster['cluster_name'], cluster.get('cluster_region', '')) for cluster in existing_clusters}
 
-        if cluster_name in cluster_names:
-            print(f"The cluster name {cluster_name} already exists in cluster.yaml. Skipping append.")
+        if (cluster_name, region) in existing_clusters_set:
+            print(f"The cluster name {cluster_name} in region {region} already exists in cluster.yaml. Skipping append.")
         else:
+            # Append new cluster info only if it doesn't already exist
             existing_clusters.append(cluster_info)
             # Save updated cluster information to YAML file
             with open(yaml_file_path, 'w') as yaml_file:
                 yaml.dump(existing_clusters, yaml_file)
 
             # Print the deployed cluster name
-            print(f"{cluster_name} has been deployed.")
+            print(f"{cluster_name} in region {region} has been deployed.")
 
     except (subprocess.CalledProcessError, KeyError) as e:
         print(f"Error: Failed to retrieve cluster name. {e}")

@@ -7,8 +7,9 @@ provider "google" {
 module "gke_module" {
   source       = "./GKE"
   cluster_name = var.cluster_name
-  project_id   = var.project_id
+  project      = var.project
   region       = var.region
+  gke_zones    = ["${var.region}-a", "${var.region}-b", "${var.region}-c"]
 }
 
 output "cluster_name" {

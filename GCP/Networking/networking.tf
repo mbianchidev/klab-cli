@@ -1,6 +1,6 @@
 module "gcp-network" {
   source       = "terraform-google-modules/network/google"
-  project_id   = var.project_id
+  project_id   = var.project
   network_name = var.network
 
   subnets = [
