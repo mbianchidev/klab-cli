@@ -68,23 +68,23 @@ resource "aws_eks_cluster" "eks" {
   ]
 }
 
-resource "null_resource" "update_aws_auth1" {
-  provisioner "local-exec" {
-    command = <<EOT
-      eksctl create iamidentitymapping \
-        --cluster eks \
-        --region eu-west-1 \
-        --arn arn:aws:iam::530833340881:user/Daniel \
-        --group system:masters \
-        --no-duplicate-arns \
-        --username daniel      
-        EOT
-  }
-  depends_on = [ 
-    aws_eks_cluster.eks, 
-    aws_eks_node_group.eks_general_node_group_1    
-    ]
-}
+# resource "null_resource" "update_aws_auth1" {
+#   provisioner "local-exec" {
+#     command = <<EOT
+#       eksctl create iamidentitymapping \
+#         --cluster ${var.cluster_name} \
+#         --region ${var.region} \
+#         --arn arn:aws:iam::530833340881:user/Daniel \
+#         --group system:masters \
+#         --no-duplicate-arns \
+#         --username daniel
+#         EOT
+#   }
+#   depends_on = [ 
+#     aws_eks_cluster.eks, 
+#     aws_eks_node_group.eks_general_node_group_1    
+#     ]
+# }
 resource "aws_eks_node_group" "eks_general_node_group_1" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "node-general_1_group_1"
