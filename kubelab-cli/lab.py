@@ -76,6 +76,7 @@ def init():
     else:
         click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.')
 
+
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--cluster-name', '-cn', help='Name of the cluster to be created', metavar='<cluster_name>')
@@ -105,7 +106,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 os.makedirs('log')
             subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
-        elif cloud_provider == "Azure":
+        elif cloud_provider == "azure":
             if not resource_group:
                 click.echo("Resource group is required for Azure.")
                 return
@@ -115,7 +116,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 os.makedirs('log')
             subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
-        elif cloud_provider == "GCP":
+        elif cloud_provider == "gcp":
             if not project:
                 click.echo("GCP project ID is required for GCP.")
                 return
@@ -130,8 +131,6 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
             click.echo("Make sure to add --cloud-provider <cloud-provider> or -cp <cloud-provider> option.")
             return
         
-        # FROM THIS COMMENT UP IT WORKS, BELOW IT SHOULD BE FIXED SINCE IT GIVES ERROS!
-
         os.chdir('../kubelab-cli')
 
         # Create cluster_credentials directory if it doesn't exist
@@ -139,22 +138,41 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
         if not os.path.exists(credentials_dir):
             os.makedirs(credentials_dir)
 
+        # Define cluster_info outside the if-elif blocks
+        cluster_info = None
+
         # Retrieve the credentials file path based on the cloud provider
-        if cloud_provider == "AWS":
+        if cloud_provider == "aws":
             credentials_file = os.path.join('credentials', 'aws_kube_credential')
 
-            # Create the dictionary with cluster information
+            # Create the dictionary with cluster information for AWS
             cluster_info = {
                 'cluster_credentials': credentials_file,
                 'cluster_name': cluster_name,
                 'cluster_provider': cloud_provider,
-                'cluster_region': region,
-                'cluster_credentials': credentials_file
+                'cluster_region': region
             }
-        elif cloud_provider == "Azure":
+        elif cloud_provider == "azure":
             credentials_file = os.path.join('credentials', 'azure_kube_credential')
-        elif cloud_provider == "GCP":
-            credentials_file = os.path.join('credentials', 'gcp_kube_credential')        
+
+            # Create the dictionary with cluster information for Azure
+            cluster_info = {
+                'cluster_credentials': credentials_file,
+                'cluster_name': cluster_name,
+                'cluster_provider': cloud_provider,
+                'resource_group': resource_group
+            }
+        elif cloud_provider == "gcp":
+            credentials_file = os.path.join('credentials', 'gcp_kube_credential')
+
+            # Create the dictionary with cluster information for GCP
+            cluster_info = {
+                'cluster_credentials': credentials_file,
+                'cluster_name': cluster_name,
+                'cluster_provider': cloud_provider,
+                'region': region,
+                'project': project
+            }
 
         # Check if the cluster name already exists in cluster.yaml
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
