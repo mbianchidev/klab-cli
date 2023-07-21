@@ -20,8 +20,11 @@ provider "aws" {
 #   source = "./S3"
 #  }
 module "VPC" {
-  source = "./VPC"
+  source             = "./VPC"
+  region             = var.region
+  availability_zones = ["${var.region}a", "${var.region}b"]
 }
+
 module "EKS" {
   source               = "./EKS"
   vpc_public_subnet_1  = values(module.VPC.public_id)
