@@ -100,27 +100,88 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 click.echo("Region is required for AWS!")
                 click.echo("Make sure to add --region <my-region> option.")
                 return
-            print(f"Creating cluster in {cloud_provider} and {region} region")
+
             os.chdir('../AWS')
+
+            # Run terraform plan and redirect the output to the log file
+            with open('log/kubelab.log', 'w') as log_file:
+                plan_process = subprocess.Popen(
+                    f'terraform plan -var="cluster_name={cluster_name}" -var="region={region}" 2>&1',
+                    shell=True,
+                    text=True,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT
+                )
+
+            # Wait for the plan to finish
+            click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
+            plan_process.wait()
+
             if not os.path.exists('log'):
                 os.makedirs('log')
-            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
+
+            click.echo("Terraform plan was completed succesfully!")
+
+            # Run terraform apply and redirect the output to the log file
+            with open('log/kubelab.log', 'a') as log_file:
+                apply_process = subprocess.Popen(
+                    f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" 2>&1',
+                    shell=True,
+                    text=True,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT
+                )
+
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
+
         elif cloud_provider == "azure":
             if not resource_group:
                 click.echo("Resource group is required for Azure!")
                 click.echo("Make sure to add --resource-group <resource-group> or -rg <resource-group> option.")
                 return
+
             if not region:
                 click.echo("Region is required for Azure!")
                 click.echo("Make sure to add --region <my-region> option.")
                 return
-            print(f"Creating cluster in {cloud_provider}")
+
             os.chdir('../Azure')
+
+            # Run terraform plan and redirect the output to the log file
+            with open('log/kubelab.log', 'w') as log_file:
+                plan_process = subprocess.Popen(
+                    f'terraform plan -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}" 2>&1',
+                    shell=True,
+                    text=True,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT
+                )
+
+            # Wait for the plan to finish
+            click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
+            plan_process.wait()
+
+            # Check the return code of the plan process to see if it was successful
+            if plan_process.returncode != 0:
+                click.echo("Terraform plan failed. Please check the input parameters and Terraform configuration.")
+                return
+
+            click.echo("Terraform plan was completed succesfully!")
             if not os.path.exists('log'):
                 os.makedirs('log')
-            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
+
+            # Run terraform apply and redirect the output to the log file
+            with open('log/kubelab.log', 'a') as log_file:
+                apply_process = subprocess.Popen(
+                    f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}" 2>&1',
+                    shell=True,
+                    text=True,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT
+                )
+
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
+
         elif cloud_provider == "gcp":
             if not project:
                 click.echo("Project ID is required for GCP!")
@@ -130,17 +191,48 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 click.echo("Region is required for GCP!")
                 click.echo("Make sure to add --region <region> or -r <region> option.")
                 return
-            print(f"Creating cluster in {cloud_provider}")
             os.chdir('../GCP')
+            # Run terraform plan and redirect the output to the log file
+            with open('log/kubelab.log', 'w') as log_file:
+                plan_process = subprocess.Popen(
+                    f'terraform plan -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}" 2>&1',
+                    shell=True,
+                    text=True,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT
+                )
+
+            # Wait for the plan to finish
+            click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
+            plan_process.wait()
+
+            # Check the return code of the plan process to see if it was successful
+            if plan_process.returncode != 0:
+                click.echo("Terraform plan failed. Please check the input parameters and Terraform configuration.")
+                return
+
             if not os.path.exists('log'):
                 os.makedirs('log')
-            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
+
+            click.echo("Terraform plan was completed succesfully!")
+
+            # Run terraform apply and redirect the output to the log file
+            with open('log/kubelab.log', 'a') as log_file:
+                apply_process = subprocess.Popen(
+                    f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}" 2>&1',
+                    shell=True,
+                    text=True,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT
+                )
+
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
+
         else:
             click.echo("Invalid cloud provider specified!")
             click.echo("Make sure to add --cloud-provider <cloud-provider> or -cp <cloud-provider> option.")
             return
-        
+
         os.chdir('../kubelab-cli')
 
         # Create cluster_credentials directory if it doesn't exist
@@ -205,7 +297,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 yaml.dump(existing_clusters, yaml_file)
 
             # Print the deployed cluster name
-            print(f"Cluster '{cluster_name}' with provider '{cloud_provider}' and region '{region}' has been deployed.")
+            print(f"Cluster '{cluster_name}' with provider '{cloud_provider}' and region '{region}' is being deployed..")
 
     except (subprocess.CalledProcessError, KeyError) as e:
         print(f"Error: Failed to retrieve cluster name. {e}")
