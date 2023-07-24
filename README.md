@@ -39,6 +39,15 @@ curl -s https://raw.githubusercontent.com/kubelab-middleware/install.sh | bash
 Linter+formatter: black + flake8
 https://py-vscode.readthedocs.io/en/latest/files/linting.html
 
+Add into your .vscode/settings.json
+
+```json
+"python.linting.flake8Args": [
+  "--max-line-length=180",
+  "--ignore=E501,E402,F841,F401,E302,E305",
+],
+```
+
 ## Installation
 
 1. Download the labctl binary for your operating system from the official GitHub repository.
