@@ -2,7 +2,12 @@ name: KubeLab CLI - labctl CI/CD
 
 on:
   push:
-    branches: [ "main" ]
+    branches:    
+      - main
+      - 'release/**'
+      - 'hotfix/**'
+    tags:        
+      - v*
   pull_request:
     branches: [ "main" ]
 
