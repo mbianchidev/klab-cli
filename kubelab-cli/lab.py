@@ -408,7 +408,13 @@ def destroy(param_type, name, region):
                                 else:
                                     print("Error occurred during describe-cluster command. Please check the command and try again.")
                                     return
-
+                        destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
+                        if destroy_all == 'yes':
+                            os.chdir('../AWS')
+                            subprocess.Popen('terraform destroy -auto-approve', shell=True)
+                        else:
+                            print("You choose not to destroy other resources")
+                            exit()
                     elif confirmation == 'no':
                         print("The destruction of the cluster has been canceled.")
                     else:
