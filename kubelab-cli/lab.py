@@ -108,21 +108,26 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
         elif cloud_provider == "azure":
             if not resource_group:
-                click.echo("Resource group is required for Azure.")
+                click.echo("Resource group is required for Azure!")
+                click.echo("Make sure to add --resource-group <resource-group> or -rg <resource-group> option.")
+                return
+            if not region:
+                click.echo("Region is required for Azure!")
+                click.echo("Make sure to add --region <my-region> option.")
                 return
             print(f"Creating cluster in {cloud_provider}")
             os.chdir('../Azure')
             if not os.path.exists('log'):
                 os.makedirs('log')
-            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
+            subprocess.Popen(f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}" | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
         elif cloud_provider == "gcp":
             if not project:
-                click.echo("Project ID is required!")
+                click.echo("Project ID is required for GCP!")
                 click.echo("Make sure to add --project <project-id> or -p <project-id> option.")
                 return
             if not region:
-                click.echo("Region is required!")
+                click.echo("Region is required for GCP!")
                 click.echo("Make sure to add --region <region> or -r <region> option.")
                 return
             print(f"Creating cluster in {cloud_provider}")
@@ -165,7 +170,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 'cluster_credentials': credentials_file,
                 'cluster_name': cluster_name,
                 'cluster_provider': cloud_provider,
-                # 'cluster_location': cluster_location
+                'cluster_region': region,
                 'cluster_resource_group': resource_group
             }
         elif cloud_provider == "gcp":
@@ -180,7 +185,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 'cluster_project': project
             }
 
-        # Check if the cluster name and region already exist in cluster.yaml
+        # Check if the cluster name, provider, and region already exist in cluster.yaml
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
         existing_clusters = []
         if os.path.exists(yaml_file_path):
@@ -188,10 +193,10 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 existing_clusters = yaml.safe_load(yaml_file)
                 existing_clusters = existing_clusters if existing_clusters is not None else []
 
-        existing_clusters_set = {(cluster['cluster_name'], cluster.get('cluster_region', '')) for cluster in existing_clusters}
+        existing_clusters_set = {(cluster['cluster_name'], cluster['cluster_provider'], cluster.get('cluster_region', '')) for cluster in existing_clusters}
 
-        if (cluster_name, region) in existing_clusters_set:
-            print(f"The cluster name {cluster_name} in region {region} already exists in cluster.yaml. Skipping append.")
+        if (cluster_name, cloud_provider, region) in existing_clusters_set:
+            print(f"The cluster with name '{cluster_name}', provider '{cloud_provider}', and region '{region}' already exists in cluster.yaml. Skipping append.")
         else:
             # Append new cluster info only if it doesn't already exist
             existing_clusters.append(cluster_info)
@@ -200,7 +205,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 yaml.dump(existing_clusters, yaml_file)
 
             # Print the deployed cluster name
-            print(f"{cluster_name} in region {region} has been deployed.")
+            print(f"Cluster '{cluster_name}' with provider '{cloud_provider}' and region '{region}' has been deployed.")
 
     except (subprocess.CalledProcessError, KeyError) as e:
         print(f"Error: Failed to retrieve cluster name. {e}")
