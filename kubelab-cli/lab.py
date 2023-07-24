@@ -26,7 +26,7 @@ def init():
         shutil.copy(aws_credentials_file, aws_kube_credentials_file)
         click.echo(f'AWS credentials saved to {aws_kube_credentials_file}\n')
         print("Initializing Terraform...\n")
-        os.chdir('../AWS')
+        os.chdir('../providers/AWS')
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
@@ -47,7 +47,7 @@ def init():
 
         click.echo(f'Azure credentials saved to {azure_credentials_file}\n')
         print("Initializing Terraform...")
-        os.chdir('../Azure')
+        os.chdir('../providers/Azure')
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
@@ -64,7 +64,7 @@ def init():
         shutil.copy(gcloud_credentials_file, gcp_kube_credentials_file)
         click.echo(f'Gcloud credentials saved to {gcp_kube_credentials_file}')
         print("Initializing Terraform...")
-        os.chdir('../GCP')
+        os.chdir('../providers/GCP')
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:
@@ -87,7 +87,7 @@ def create(name, cloud_provider):
             f.write(f"{region}")
 
         print(f"Creating cluster in {cloud_provider} and {region} region")
-        os.chdir('../AWS')
+        os.chdir('../providers/AWS')
         subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
         # Retrieve the cluster name from the Terraform output
@@ -142,7 +142,7 @@ def create(name, cloud_provider):
 
     elif name == 'cluster' and cloud_provider == "Azure":
         print(f"Creating cluster in {cloud_provider}")
-        os.chdir('../Azure')
+        os.chdir('../providers/Azure')
         subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
 
@@ -199,7 +199,7 @@ def create(name, cloud_provider):
             print(f"{cluster_name} has been deployed.")
     elif name == 'cluster' and cloud_provider == "GCP":
         print(f"Creating cluster in {cloud_provider}")
-        os.chdir('../GCP')
+        os.chdir('../providers/GCP')
         subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
 
@@ -515,7 +515,7 @@ def add(type, product, version):
             type = 'operator'
             deploy_repo = "catalog/nginx/nginx_deployment"
             os.chdir(deploy_repo)
-            process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True )
+            process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True)
             exit_code = process.wait()
             if exit_code == 0:
                 print("Successfully deleted nginx deployment \n")
