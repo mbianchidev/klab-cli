@@ -48,8 +48,9 @@ jobs:
             export VERSION="0.1.0"
           else
             # If tags exist, increment the patch version
-            export VERSION=$(python -c "print('$LATEST_TAG'.split('.')[:-1] + [str(int('$LATEST_TAG'.split('.')[-1]) + 1)])")
-            export VERSION=$(python -c "print('.'.join('$VERSION'))")
+            VERSION_PARTS=(${LATEST_TAG//./ })
+            PATCH=$((VERSION_PARTS[2] + 1))
+            export VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$PATCH"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
         fi
