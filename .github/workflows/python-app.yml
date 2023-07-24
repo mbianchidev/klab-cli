@@ -37,8 +37,31 @@ jobs:
     - name: Build Python package
       run: |
         python -m build
+
+    - name: Set Version
+      id: set_version
+      run: |
+        if [ -z "${{ env.VERSION }}" ]; then
+          LATEST_TAG=$(git describe --abbrev=0 --tags 2>/dev/null)
+          if [ -z "$LATEST_TAG" ]; then
+            # If no tags exist, set the version to 0.1.0
+            export VERSION="0.1.0"
+          else
+            # If tags exist, increment the patch version
+            export VERSION=$(python -c "print('$LATEST_TAG'.split('.')[:-1] + [str(int('$LATEST_TAG'.split('.')[-1]) + 1)])")
+            export VERSION=$(python -c "print('.'.join('$VERSION'))")
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+        fi
+    - name: Create and Push Tag
+      if: ${{ env.VERSION != '' }}
+      run: |
+        git tag -a "v${{ env.VERSION }}" -m "Version ${{ env.VERSION }}"
+        git push origin "v${{ env.VERSION }}"
+
     - name: Publish to GitHub Releases
       uses: softprops/action-gh-release@v1
       with:
         files: dist/*
-
+        tag_name: ${{ env.VERSION }}
+        body: "Release ${{ env.VERSION }}"
