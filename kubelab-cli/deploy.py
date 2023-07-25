@@ -33,6 +33,7 @@ class Deploy:
                 'installed_type': self.installed_type,
                 'operatorRepo': operatorRepo,
                 'operatorVersion': self.op_version,
+                'operatorImage': self.operatorImage,
                 'operatorDir': self.operatorDir,
                 'deploymentFile': self.deployment_type
             },
@@ -49,6 +50,7 @@ class Deploy:
                 file.write("  installed_type: {}\n".format(item['installed_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
 
@@ -79,6 +81,7 @@ class Deploy:
                 'installed_type': self.installed_type,
                 'operatorRepo': operatorRepo,
                 'operatorVersion': self.op_version,
+                'operatorImage': self.operatorImage,
                 'operatorDir': self.operatorDir,
                 'deploymentFile': self.deployment_type
             },
@@ -95,6 +98,7 @@ class Deploy:
                 file.write("  installed_type: {}\n".format(item['installed_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))           
         pass

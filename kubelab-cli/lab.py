@@ -540,10 +540,10 @@ def add(type, product, version):
         deploy = Deploy(op_version=version, productName=product)
         deploy.switch_deployment(productName=product)
     elif type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
@@ -582,6 +582,7 @@ def delete(type, product, version):
     deploymentFile = dict()
     operatorRepo = dict()
     operatorDir = dict()
+    operatorImage = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -596,6 +597,8 @@ def delete(type, product, version):
                 operatorDir['operatorDir'] = line.split(':')[1].strip()    
             elif line.startswith('operatorRepo'):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorImage'):
+                operatorImage['operatorImage'] = line.split(': ')[1].strip()
     if type == 'operator' and product == 'nginx':
         print(f'Deleting NGINX with {version} version')
         repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
@@ -612,6 +615,7 @@ def delete(type, product, version):
                 'installed_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
                 'operatorVersion': 'None',
+                'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile']
             },
@@ -628,6 +632,7 @@ def delete(type, product, version):
                 file.write("  installed_type: {}\n".format(item['installed_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
         print(f'Nginx operator deleted successfully with {version} version')
@@ -646,6 +651,7 @@ def delete(type, product, version):
                 'installed_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
                 'operatorVersion': 'None',
+                'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile']
             },
@@ -662,6 +668,7 @@ def delete(type, product, version):
                 file.write("  installed_type: {}\n".format(item['installed_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
     else:
