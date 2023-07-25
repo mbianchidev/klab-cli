@@ -33,26 +33,42 @@ def init():
 
     # AWS
     aws_credentials_file = os.path.expanduser('~/.aws/credentials')
-    if os.path.isfile(aws_credentials_file):
-        aws_kube_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
-        shutil.copy(aws_credentials_file, aws_kube_credentials_file)
-        click.echo(f'AWS credentials saved to {aws_kube_credentials_file}\n')
-        aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
-        log_message(aws_logs_file, "AWS credentials saved.")
-        print("Initializing Terraform for AWS...\n")
-        os.chdir('../AWS')
-        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    try:
+        process = subprocess.Popen(['aws', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout_output, stderr_output = process.communicate()
         exit_code = process.wait()
-        if exit_code == 0:
-            log_message(aws_logs_file, "Terraform for AWS is successfully initialized.")
-            print("Terraform for AWS is successfully initialized.\n")
-        else:
-            log_message(aws_logs_file, "Terraform for AWS failed to initialize.")
-            log_message(aws_logs_file, stderr_output)
-            print("Terraform for AWS failed to initialize. Please check the logs in the 'logs' directory.\n")
-    else:
+    except FileNotFoundError:
         click.echo('AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
+        aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+        log_message(aws_logs_file, "AWS CLI is not installed or configured.")
+    else:
+        if exit_code == 0:
+            if os.path.isfile(aws_credentials_file):
+                aws_kube_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
+                shutil.copy(aws_credentials_file, aws_kube_credentials_file)
+                click.echo(f'AWS credentials saved to {aws_kube_credentials_file}\n')
+                aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+                log_message(aws_logs_file, "AWS credentials saved.")
+                print("Initializing Terraform for AWS...\n")
+                os.chdir('../AWS')
+                process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+                stdout_output, stderr_output = process.communicate()
+                exit_code = process.wait()
+                if exit_code == 0:
+                    log_message(aws_logs_file, "Terraform for AWS is successfully initialized.")
+                    print("Terraform for AWS is successfully initialized.\n")
+                else:
+                    log_message(aws_logs_file, "Terraform for AWS failed to initialize.")
+                    log_message(aws_logs_file, stderr_output)
+                    print("Terraform for AWS failed to initialize. Please check the logs in the 'logs' directory.\n")
+            else:
+                click.echo('AWS credentials file not found. Please configure AWS CLI before proceeding.\n')
+                aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+                log_message(aws_logs_file, "AWS credentials file not found.")
+        else:
+            click.echo('AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
+            aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+            log_message(aws_logs_file, "AWS CLI is not installed or configured.")
 
     # Azure
     try:
@@ -108,7 +124,9 @@ def init():
             log_message(gcp_logs_file, stderr_output)
             print("Terraform for Google Cloud failed to initialize. Please check the logs in the 'logs' directory.\n")
     else:
-        click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.')
+        click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.\n')
+        gcp_logs_file = os.path.join(logs_dir, 'gcp_terraform_init.log')
+        log_message(gcp_logs_file, "gcloud CLI is not installed or configured.")
 
 
 @cli.command()
