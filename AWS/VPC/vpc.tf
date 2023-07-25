@@ -131,7 +131,7 @@ resource "aws_security_group" "sg_in" {
   }
 
   tags = {
-    Environment = "test"
+    Environment = var.environment
   }
 }
 
