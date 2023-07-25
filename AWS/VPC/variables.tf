@@ -47,3 +47,8 @@ variable "custom_ports" {
       443 = ["0.0.0.0/0"]
     }
 }
+
+variable "environment" {
+  type    = string
+  default = "testing"
+}
