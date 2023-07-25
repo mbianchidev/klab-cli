@@ -93,8 +93,8 @@ def init():
         gcp_kube_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential')
         shutil.copy(gcloud_credentials_file, gcp_kube_credentials_file)
         click.echo(f'Gcloud credentials saved to {gcp_kube_credentials_file}')
-        gcp_logs_file = os.path.join(logs_dir, 'gcp_terraform_init.log')  # Move this line up here
-        log_message(gcp_logs_file, "Gcloud credentials saved.")  # Move this line up here
+        gcp_logs_file = os.path.join(logs_dir, 'gcp_terraform_init.log')
+        log_message(gcp_logs_file, "Gcloud credentials saved.")
         print("Initializing Terraform for Google Cloud...")
         os.chdir('../GCP')
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
