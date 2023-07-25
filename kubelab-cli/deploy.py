@@ -3,7 +3,7 @@ import subprocess
 
 
 class Deploy:
-    def __init__(self, productName, installed_type=None, deployment_type=None, operatorRepo=None, op_version=None, operatorDir=None):
+    def __init__(self, productName, installed_type=None, deployment_type=None, operatorImage=None, operatorRepo=None, op_version=None, operatorDir=None):
         # Constructor code here
         self.op_version = op_version
         self.deployment_type = deployment_type
@@ -11,6 +11,7 @@ class Deploy:
         self.productName = productName
         self.installed_type = installed_type
         self.operatorDir = operatorDir
+        self.operatorImage = operatorImage
         pass
 
     def deployment(self, productName, operatorRepo):
@@ -61,7 +62,7 @@ class Deploy:
         print(f'Adding {productName} operator with {self.op_version} version\n')
         subprocess.run(['git', 'checkout', f'v{self.op_version}'])
         # Deploy the Operator
-        img = f'nginx/nginx-ingress-operator:{self.op_version}'
+        img = f'{self.operatorImage}:{self.op_version}'
         process = subprocess.Popen(['make', 'deploy', f'IMG={img}'], stdout=subprocess.PIPE, universal_newlines=True)
         exit_code = process.wait()
         if exit_code == 0:

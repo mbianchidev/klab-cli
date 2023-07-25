@@ -514,6 +514,7 @@ def add(type, product, version):
     deploymentFile = dict()
     operatorRepo = dict()
     operatorDir = dict()
+    operatorImage = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -528,6 +529,8 @@ def add(type, product, version):
                 operatorDir['operatorDir'] = line.split(':')[1].strip()
             elif line.startswith('operatorRepo'):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorImage'):
+                operatorImage['operatorImage'] = line.split(': ')[1].strip()    
     if installed_type['installed_type'] == "deployment":
         deploy = Deploy(productName=product)
         deploy.switch_operator(productName=product)
