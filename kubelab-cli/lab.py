@@ -80,11 +80,11 @@ def init():
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--cluster-name', '-cn', help='Name of the cluster to be created', metavar='<cluster_name>')
-@click.option('--cloud-provider', '-cp', type=click.Choice(['aws', 'azure', 'gcp']), help='Cloud provider', metavar='<cloud_provider>')
+@click.option('--provider', '-pr', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
 @click.option('--region', '-r', type=str, help='Cluster region (required for AWS and GCP)', metavar='<region>')
 @click.option('--resource-group', '-rg', type=str, help='Resource group name (required for Azure)', metavar='<resource_group>')
 @click.option('--project', '-p', type=str, help='GCP project ID (required for GCP)', metavar='<project_id>')
-def create(type, cluster_name, cloud_provider, region, resource_group, project):
+def create(type, cluster_name, provider, region, resource_group, project):
     if type != 'cluster':
         click.echo("Invalid type specified. Only 'cluster' is supported.")
         return
@@ -95,10 +95,10 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
         return
 
     try:
-        if cloud_provider == "aws":
+        if provider == "AWS":
             if not region:
                 click.echo("Region is required for AWS!")
-                click.echo("Make sure to add --region <my-region> option.")
+                click.echo("Make sure to add --region <my-region> or -r <my-region> option.")
                 return
 
             os.chdir('../AWS')
@@ -134,7 +134,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
 
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
 
-        elif cloud_provider == "azure":
+        elif provider == "Azure":
             if not resource_group:
                 click.echo("Resource group is required for Azure!")
                 click.echo("Make sure to add --resource-group <resource-group> or -rg <resource-group> option.")
@@ -182,7 +182,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
 
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
 
-        elif cloud_provider == "gcp":
+        elif provider == "GCP":
             if not project:
                 click.echo("Project ID is required for GCP!")
                 click.echo("Make sure to add --project <project-id> or -p <project-id> option.")
@@ -230,7 +230,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
 
         else:
             click.echo("Invalid cloud provider specified!")
-            click.echo("Make sure to add --cloud-provider <cloud-provider> or -cp <cloud-provider> option.")
+            click.echo("Make sure to add --provider <cloud-provider> or -pr <cloud-provider> option.")
             return
 
         os.chdir('../kubelab-cli')
@@ -244,35 +244,35 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
         cluster_info = None
 
         # Retrieve the credentials file path based on the cloud provider
-        if cloud_provider == "aws":
+        if provider == "AWS":
             credentials_file = os.path.join('credentials', 'aws_kube_credential')
 
             # Create the dictionary with cluster information for AWS
             cluster_info = {
                 'cluster_credentials': credentials_file,
                 'cluster_name': cluster_name,
-                'cluster_provider': cloud_provider,
+                'cluster_provider': provider,
                 'cluster_region': region
             }
-        elif cloud_provider == "azure":
+        elif provider == "Azure":
             credentials_file = os.path.join('credentials', 'azure_kube_credential')
 
             # Create the dictionary with cluster information for Azure
             cluster_info = {
                 'cluster_credentials': credentials_file,
                 'cluster_name': cluster_name,
-                'cluster_provider': cloud_provider,
+                'cluster_provider': provider,
                 'cluster_region': region,
                 'cluster_resource_group': resource_group
             }
-        elif cloud_provider == "gcp":
+        elif provider == "GCP":
             credentials_file = os.path.join('credentials', 'gcp_kube_credential')
 
             # Create the dictionary with cluster information for GCP
             cluster_info = {
                 'cluster_credentials': credentials_file,
                 'cluster_name': cluster_name,
-                'cluster_provider': cloud_provider,
+                'cluster_provider': provider,
                 'cluster_region': region,
                 'cluster_project': project
             }
@@ -287,8 +287,8 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
 
         existing_clusters_set = {(cluster['cluster_name'], cluster['cluster_provider'], cluster.get('cluster_region', '')) for cluster in existing_clusters}
 
-        if (cluster_name, cloud_provider, region) in existing_clusters_set:
-            print(f"The cluster with name '{cluster_name}', provider '{cloud_provider}', and region '{region}' already exists in cluster.yaml. Skipping append.")
+        if (cluster_name, provider, region) in existing_clusters_set:
+            print(f"The cluster with name '{cluster_name}', provider '{provider}', and region '{region}' already exists in cluster.yaml. Skipping append.")
         else:
             # Append new cluster info only if it doesn't already exist
             existing_clusters.append(cluster_info)
@@ -297,7 +297,7 @@ def create(type, cluster_name, cloud_provider, region, resource_group, project):
                 yaml.dump(existing_clusters, yaml_file)
 
             # Print the deployed cluster name
-            print(f"Cluster '{cluster_name}' with provider '{cloud_provider}' and region '{region}' is being deployed..")
+            print(f"Cluster '{cluster_name}' with provider '{provider}' and region '{region}' is being deployed..")
 
     except (subprocess.CalledProcessError, KeyError) as e:
         print(f"Error: Failed to retrieve cluster name. {e}")
