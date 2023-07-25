@@ -124,7 +124,7 @@ class Deploy:
         answer = input(f"{productName} is already installed, do you want to switch from the current installation (operator - {self.op_version}) to an deployment based one? (Y/N): ")
         if answer == 'y':
             print("Deleting operator and switching to deployment \n")     
-            repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
+            repo_dir = self.operatorDir
             os.chdir(repo_dir)
             # Delete the deployed operator
             process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
