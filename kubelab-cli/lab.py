@@ -8,9 +8,9 @@ from deploy import Deploy
 import shutil
 import fnmatch
 import yaml
+from datetime import datetime
 import sys
 import base64
-
 
 @click.group()
 def cli():
@@ -23,60 +23,113 @@ def init():
     credentials_dir = os.path.join(script_dir, 'credentials')
     os.makedirs(credentials_dir, exist_ok=True)
 
-    # Check for AWS credentials
+    # Create logs directory
+    logs_dir = os.path.join(script_dir, 'logs')
+    os.makedirs(logs_dir, exist_ok=True)
+
+    def log_message(log_file, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] {message}\n"
+        with open(log_file, 'a') as log_file:
+            log_file.write(log_entry)
+
+    # AWS
     aws_credentials_file = os.path.expanduser('~/.aws/credentials')
-    if os.path.isfile(aws_credentials_file):
-        aws_kube_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
-        shutil.copy(aws_credentials_file, aws_kube_credentials_file)
-        click.echo(f'AWS credentials saved to {aws_kube_credentials_file}\n')
-        print("Initializing Terraform...\n")
-        os.chdir('../AWS')
-        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+    try:
+        process = subprocess.Popen(['aws', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        stdout_output, stderr_output = process.communicate()
         exit_code = process.wait()
-        if exit_code == 0:
-            print("Terraform is successfully initialized\n")
-        else:
-            print("Terraform hasn't been initialized. Please check tf logs\n")
-    else:
+    except FileNotFoundError:
         click.echo('AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
-
-    # Check for Azure credentials
-    azure_credential_check = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
-    if azure_credential_check.returncode == 0:
-        output = azure_credential_check.stdout.strip()
-        azure_credentials_file = os.path.join(credentials_dir, 'azure_kube_credential.json')
-
-        with open(azure_credentials_file, 'w') as f:
-            f.write(output)
-
-        click.echo(f'Azure credentials saved to {azure_credentials_file}\n')
-        print("Initializing Terraform...")
-        os.chdir('../Azure')
-        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
-        exit_code = process.wait()
-        if exit_code == 0:
-            print("Terraform is succsesfuly initialized\n")
-        else:
-            print("Terraform is not initialized\n")
+        aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+        log_message(aws_logs_file, "AWS CLI is not installed or configured.")
     else:
-        click.echo('Azure CLI is not installed or configured. Please install and configure it before proceeding.\n')
+        if exit_code == 0:
+            if os.path.isfile(aws_credentials_file):
+                aws_kube_credentials_file = os.path.join(credentials_dir, 'aws_kube_credential')
+                shutil.copy(aws_credentials_file, aws_kube_credentials_file)
+                click.echo(f'AWS credentials saved to {aws_kube_credentials_file}\n')
+                aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+                log_message(aws_logs_file, "AWS credentials saved.")
+                print("Initializing Terraform for AWS...\n")
+                os.chdir('../AWS')
+                process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+                stdout_output, stderr_output = process.communicate()
+                exit_code = process.wait()
+                if exit_code == 0:
+                    log_message(aws_logs_file, "Terraform for AWS is successfully initialized.")
+                    print("Terraform for AWS is successfully initialized.\n")
+                else:
+                    log_message(aws_logs_file, "Terraform for AWS failed to initialize.")
+                    log_message(aws_logs_file, stderr_output)
+                    print("Terraform for AWS failed to initialize. Please check the logs in the 'logs' directory.\n")
+            else:
+                click.echo('AWS credentials file not found. Please configure AWS CLI before proceeding.\n')
+                aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+                log_message(aws_logs_file, "AWS credentials file not found.")
+        else:
+            click.echo('AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
+            aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
+            log_message(aws_logs_file, "AWS CLI is not installed or configured.")
 
-    # Check for gcloud credentials
+    # Azure
+    try:
+        azure_credential_check = subprocess.run(['az', 'account', 'show'], capture_output=True, text=True)
+    except FileNotFoundError:
+        click.echo('Azure CLI is not installed or configured. Please install and configure it before proceeding.\n')
+        azure_logs_file = os.path.join(logs_dir, 'azure_terraform_init.log')
+        log_message(azure_logs_file, "Azure CLI is not installed or configured.")
+    else:
+        if azure_credential_check.returncode == 0:
+            output = azure_credential_check.stdout.strip()
+            azure_credentials_file = os.path.join(credentials_dir, 'azure_kube_credential')
+            with open(azure_credentials_file, 'w') as f:
+                f.write(output)
+            click.echo(f'Azure credentials saved to {azure_credentials_file}\n')
+            azure_logs_file = os.path.join(logs_dir, 'azure_terraform_init.log')
+            log_message(azure_logs_file, "Azure credentials saved.")
+            print("Initializing Terraform for Azure...")
+            os.chdir('../Azure')
+            process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            stdout_output, stderr_output = process.communicate()
+            exit_code = process.wait()
+            if exit_code == 0:
+                log_message(azure_logs_file, "Terraform for Azure is successfully initialized.")
+                print("Terraform for Azure is successfully initialized.\n")
+            else:
+                log_message(azure_logs_file, "Terraform for Azure failed to initialize.")
+                log_message(azure_logs_file, stderr_output)
+                print("Terraform for Azure failed to initialize. Please check the logs in the 'logs' directory.\n")
+        else:
+            click.echo('Azure CLI is not logged in. Please log in before proceeding.\n')
+            azure_logs_file = os.path.join(logs_dir, 'azure_terraform_init.log')
+            log_message(azure_logs_file, "Azure CLI is not logged in.")
+
+    # Google Cloud
     gcloud_credentials_file = os.path.expanduser('~/.config/gcloud/application_default_credentials.json')
     if os.path.isfile(gcloud_credentials_file):
-        gcp_kube_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential.json')
+        gcp_kube_credentials_file = os.path.join(credentials_dir, 'gcp_kube_credential')
         shutil.copy(gcloud_credentials_file, gcp_kube_credentials_file)
         click.echo(f'Gcloud credentials saved to {gcp_kube_credentials_file}')
-        print("Initializing Terraform...")
+        gcp_logs_file = os.path.join(logs_dir, 'gcp_terraform_init.log')
+        log_message(gcp_logs_file, "Gcloud credentials saved.")
+        print("Initializing Terraform for Google Cloud...")
         os.chdir('../GCP')
-        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, universal_newlines=True)
+        process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        stdout_output, stderr_output = process.communicate()
         exit_code = process.wait()
         if exit_code == 0:
-            print("Terraform is successfully initialized\n")
+            log_message(gcp_logs_file, "Terraform for Google Cloud is successfully initialized.")
+            print("Terraform for Google Cloud is successfully initialized.\n")
         else:
-            print("Terraform is not initialized\n")
+            log_message(gcp_logs_file, "Terraform for Google Cloud failed to initialize.")
+            log_message(gcp_logs_file, stderr_output)
+            print("Terraform for Google Cloud failed to initialize. Please check the logs in the 'logs' directory.\n")
     else:
-        click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.')
+        click.echo('gcloud CLI is not installed or configured. Please install and configure it before proceeding.\n')
+        gcp_logs_file = os.path.join(logs_dir, 'gcp_terraform_init.log')
+        log_message(gcp_logs_file, "gcloud CLI is not installed or configured.")
+
 
 @cli.command()
 @click.argument('name', type=click.Choice(['cluster', 'role', 'rbac']))
