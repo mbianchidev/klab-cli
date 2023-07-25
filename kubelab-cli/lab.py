@@ -408,7 +408,16 @@ def destroy(param_type, name, region):
                                 else:
                                     print("Error occurred during describe-cluster command. Please check the command and try again.")
                                     return
-
+                        data.remove(cluster)
+                        with open('cluster_credentials/cluster.yaml', 'w') as file:
+                            yaml.dump(data, file)
+                        destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
+                        if destroy_all == 'yes':
+                            os.chdir('../AWS')
+                            subprocess.Popen('terraform destroy -auto-approve', shell=True)
+                        else:
+                            print("You choose not to destroy other resources")
+                            exit()
                     elif confirmation == 'no':
                         print("The destruction of the cluster has been canceled.")
                     else:
@@ -432,6 +441,16 @@ def destroy(param_type, name, region):
                                     print(f"Deleting AKS cluster named {azure_cluster_name} in resource group {azure_resource_group}.")
                                     subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
                                     print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} has been deleted successfully.")
+                                    data.remove(cluster)
+                                    with open('cluster_credentials/cluster.yaml', 'w') as file:
+                                        yaml.dump(data, file)
+                                    destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
+                                    if destroy_all == 'yes':
+                                        os.chdir('../Azure')
+                                        subprocess.Popen('terraform destroy -auto-approve', shell=True)
+                                    else:
+                                        print("You choose not to destroy other resources")
+                                        exit()
                                 elif confirmation == 'no':
                                     print("The destruction of the cluster has been canceled.")
                                 else:
@@ -486,7 +505,16 @@ def destroy(param_type, name, region):
                                     print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} has been deleted successfully.")
                                 else:
                                     print(f"No GKE cluster named {gcp_cluster_name} found in any zone of region {gcp_cluster_region}.")
-
+                                data.remove(cluster)
+                                with open('cluster_credentials/cluster.yaml', 'w') as file:
+                                    yaml.dump(data, file)
+                                destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
+                                if destroy_all == 'yes':
+                                    os.chdir('../GCP')
+                                    subprocess.Popen('terraform destroy -auto-approve', shell=True)
+                                else:
+                                    print("You choose not to destroy other resources")
+                                    exit()
                             except subprocess.CalledProcessError as e:
                                 print("An error occurred while retrieving the available zones. Please check the command and try again.")
 
@@ -497,11 +525,6 @@ def destroy(param_type, name, region):
 
                     else:
                         print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} does not exist.")
-
-                # Remove the destroyed cluster from the cluster.yaml file
-                data.remove(cluster)
-                with open('cluster_credentials/cluster.yaml', 'w') as file:
-                    yaml.dump(data, file)
 
 
 @cli.command()
