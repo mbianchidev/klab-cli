@@ -4,10 +4,12 @@ import click
 import os
 import subprocess
 import json
-from catalog.nginx.deploy import Deploy
+from deploy import Deploy
 import shutil
 import fnmatch
 import yaml
+import sys
+import base64
 
 
 @click.group()
@@ -90,6 +92,9 @@ def create(name, cloud_provider):
 
         print(f"Creating cluster in {cloud_provider} and {region} region")
         os.chdir('../AWS')
+        log_file = 'log'
+        if not os.path.exists(log_file):
+            os.makedirs(log_file)
         subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
         # Retrieve the cluster name from the Terraform output
@@ -145,6 +150,9 @@ def create(name, cloud_provider):
     elif name == 'cluster' and cloud_provider == "Azure":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../Azure')
+        log_file = 'log'
+        if not os.path.exists(log_file):
+            os.makedirs(log_file)
         subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
 
@@ -202,6 +210,8 @@ def create(name, cloud_provider):
     elif name == 'cluster' and cloud_provider == "GCP":
         print(f"Creating cluster in {cloud_provider}")
         os.chdir('../GCP')
+        if not os.path.exists(log_file):
+            os.makedirs(log_file)
         subprocess.Popen('terraform apply -auto-approve | sed -r "s/\\x1B\\[([0-9]{1,2}(;[0-9]{1,2})?)?[mGK]//g" > log/kubelab.log 2>&1 &', shell=True)
         click.echo("Cluster will be created in 10 minutes and for logs check log/kubelab.log file")
 
@@ -501,7 +511,10 @@ def destroy(param_type, name, region):
 def add(type, product, version):
     product_cat = dict()
     installed_type = dict()
-    # FIXME switch between deployment/operator must be done in the specific file
+    deploymentFile = dict()
+    operatorRepo = dict()
+    operatorDir = dict()
+    operatorImage = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -510,47 +523,28 @@ def add(type, product, version):
                 product_cat['product'] = line.split(':')[1].strip()
             elif line.startswith('installed_type'):
                 installed_type['installed_type'] = line.split(':')[1].strip()
+            elif line.startswith('deploymentFile'):
+                deploymentFile['deploymentFile'] = line.split(':')[1].strip()
+            elif line.startswith('operatorDir'):
+                operatorDir['operatorDir'] = line.split(':')[1].strip()
+            elif line.startswith('operatorRepo'):
+                operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorImage'):
+                operatorImage['operatorImage'] = line.split(': ')[1].strip()    
     if installed_type['installed_type'] == "deployment":
-        answer = input("NGINX is already installed, do you want to switch from the current installation (deployment - latest) to an operator based one? (Y/N): ")
-        if answer == 'y':
-            print("Deleting the deployment and switching to operator \n")
-            type = 'operator'
-            deploy_repo = "catalog/nginx/nginx_deployment"
-            os.chdir(deploy_repo)
-            process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True )
-            exit_code = process.wait()
-            if exit_code == 0:
-                print("Successfully deleted nginx deployment \n")
-            else:
-                print("Deployment failed")
-            os.chdir('../../..')
-        elif answer == 'n':
-            print("Staying in deployment")
-            exit()
+        deploy = Deploy(productName=product)
+        deploy.switch_operator(productName=product)
+        type = 'operator'
     if installed_type['installed_type'] == "operator":
-        answer = input(f"NGINX is already installed, do you want to switch from the current installation (operator - {version}) to an deployment based one? (Y/N): ")
-        if answer == 'y':
-            print("Deleting operator and switching to deployment \n")
-            type = 'deployment'
-            repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
-            os.chdir(repo_dir)
-            # Delete the deployed operator
-            process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
-            exit_code = process.wait()
-            if exit_code == 0:
-                print(f"Successfully deleted nginx operator {version} version\n")
-            else:
-                print("Deployment failed")
-            os.chdir('../../../')
-        elif answer == 'n':
-            print("Keeping the deployment installed.")
-            exit()
+        type = 'deployment'
+        deploy = Deploy(op_version=version, productName=product)
+        deploy.switch_deployment(productName=product)
     elif type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=version)
-        deploy.operator()
+        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy()
-        deploy.deployment()
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
+        deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
 @cli.command()
@@ -583,6 +577,28 @@ def update(type, product, version):
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def delete(type, product, version):
+    product_cat = dict()
+    installed_type = dict()
+    deploymentFile = dict()
+    operatorRepo = dict()
+    operatorDir = dict()
+    operatorImage = dict()
+    with open("catalog/catalog.yaml", 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            line = line.strip()
+            if line.startswith('- product'):
+                product_cat['product'] = line.split(':')[1].strip()
+            elif line.startswith('installed_type'):
+                installed_type['installed_type'] = line.split(':')[1].strip()
+            elif line.startswith('deploymentFile'):
+                deploymentFile['deploymentFile'] = line.split(':')[1].strip()
+            elif line.startswith('operatorDir'):
+                operatorDir['operatorDir'] = line.split(':')[1].strip()    
+            elif line.startswith('operatorRepo'):
+                operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorImage'):
+                operatorImage['operatorImage'] = line.split(': ')[1].strip()
     if type == 'operator' and product == 'nginx':
         print(f'Deleting NGINX with {version} version')
         repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
@@ -595,8 +611,13 @@ def delete(type, product, version):
                 'default_version': 'latest',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
-                'installed_version': 'latest',
-                'installed_type': ''
+                'installed_version': '',
+                'installed_type': '',
+                'operatorRepo': operatorRepo['operatorRepo'],
+                'operatorVersion': 'None',
+                'operatorImage': operatorImage['operatorImage'],
+                'operatorDir': operatorDir['operatorDir'],
+                'deploymentFile': deploymentFile['deploymentFile']
             },
         ]
         with open('../../catalog.yaml', 'w') as file:
@@ -608,7 +629,12 @@ def delete(type, product, version):
                 for available_type in item['available_types']:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n\n".format(item['installed_type']))
+                file.write("  installed_type: {}\n".format(item['installed_type']))
+                file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
+                file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorImage: {}\n".format(item['operatorImage']))
+                file.write("  operatorDir: {}\n".format(item['operatorDir']))
+                file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
         print(f'Nginx operator deleted successfully with {version} version')
     elif type == 'deployment' and product == 'nginx':
         print("Deleting nginx deployment with latest image version")
@@ -621,8 +647,13 @@ def delete(type, product, version):
                 'default_version': 'latest',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
-                'installed_version': 'latest',
-                'installed_type': ''
+                'installed_version': '',
+                'installed_type': '',
+                'operatorRepo': operatorRepo['operatorRepo'],
+                'operatorVersion': 'None',
+                'operatorImage': operatorImage['operatorImage'],
+                'operatorDir': operatorDir['operatorDir'],
+                'deploymentFile': deploymentFile['deploymentFile']
             },
         ]
         with open('../../catalog.yaml', 'w') as file:
@@ -634,7 +665,12 @@ def delete(type, product, version):
                 for available_type in item['available_types']:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n\n".format(item['installed_type']))
+                file.write("  installed_type: {}\n".format(item['installed_type']))
+                file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
+                file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
+                file.write("  operatorImage: {}\n".format(item['operatorImage']))
+                file.write("  operatorDir: {}\n".format(item['operatorDir']))
+                file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
     else:
         print('Invalid configuration.')
 
