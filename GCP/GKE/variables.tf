@@ -5,15 +5,9 @@ variable "region" {
   type        = string
 }
 
-variable "project_id" {
+variable "project" {
   description = "The project ID."
   type        = string
-}
-
-variable "env_name" {
-  description = "The environment for the infrastructure."
-  type        = string
-  default     = "prod"
 }
 
 ##### Networking Variables #####
@@ -65,7 +59,6 @@ variable "ip_cidr_range_services" {
 variable "gke_zones" {
   description = "The zones to host the cluster in."
   type        = list(string)
-  default     = ["us-central1-a", "us-central1-b", "us-central1-c"]
 }
 
 variable "cluster_name" {

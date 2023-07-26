@@ -1,5 +1,5 @@
 locals {
-  credentials_file = file("../kubelab-cli/credentials/azure_kube_credential.json")
+  credentials_file = file("../kubelab-cli/credentials/azure_kube_credential")
   credentials      = jsondecode(local.credentials_file)
 }
 
@@ -23,16 +23,28 @@ provider "azurerm" {
 
 module "AKS" {
   source              = "./AKS-Microsoft-Managed"
-  resource_group_name = "kubelab-testing"
+  resource_group_name = var.resource_group
   prefix              = "testing"
-  cluster_name        = "aks-managed"
-  location            = "eastus"
+  cluster_name        = var.cluster_name
+  location            = var.location # "eastus"
   kubernetes_version  = "1.26"
   enable_auto_scaling = true
   node_vm_size        = "Standard_D2s_v3"
   node_count          = null
   min_node_count      = 1
   max_node_count      = 2
+}
+
+variable "resource_group" {
+  type = string
+}
+
+variable "cluster_name" {
+  type = string
+}
+
+variable "location" {
+  type = string
 }
 
 output "cluster_name" {

@@ -1,7 +1,7 @@
-# provider "aws" {
-#   shared_credentials_files = ["../kubelab-cli/credentials/aws_kube_credential"]
-#   region = file("../kubelab-cli/credentials/aws_kube_config")
-# }
+provider "aws" {
+  shared_credentials_files = ["../kubelab-cli/credentials/aws_kube_credential"]
+  region                   = var.region
+}
 
 # module "CodePipeline" {
 #   source = "./CodePipeline"
@@ -20,13 +20,25 @@
 #   source = "./S3"
 #  }
 module "VPC" {
-  source = "./VPC"
+  source             = "./VPC"
+  region             = var.region
+  availability_zones = ["${var.region}a", "${var.region}b"]
 }
+
 module "EKS" {
-  source = "./EKS"
-  vpc_public_subnet_1 = values(module.VPC.public_id)
+  source               = "./EKS"
+  vpc_public_subnet_1  = values(module.VPC.public_id)
   vpc_private_subnet_1 = values(module.VPC.private_id)
-  vpc_security_group = module.VPC.security_group_id
+  vpc_security_group   = module.VPC.security_group_id
+  cluster_name         = var.cluster_name
+}
+
+variable "region" {
+  type = string
+}
+
+variable "cluster_name" {
+  type = string
 }
 
 # output "ebs_ids" {
