@@ -131,15 +131,7 @@ def init():
         log_message(gcp_logs_file, "gcloud CLI is not installed or configured.")
 
 
-@cli.command()
-@click.argument('type', type=click.Choice(['cluster']))
-@click.option('--cluster-name', '-cn', help='Name of the cluster to be created', metavar='<cluster_name>')
-@click.option('--provider', '-pr', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
-@click.option('--region', '-r', type=str, help='Cluster region (required for AWS and GCP)', metavar='<region>')
-@click.option('--resource-group', '-rg', type=str, help='Resource group name (required for Azure)', metavar='<resource_group>')
-@click.option('--project', '-p', type=str, help='GCP project ID (required for GCP)', metavar='<project_id>')
-def create(type, cluster_name, provider, region, resource_group, project):
-    def log(command, log_file_path, wait_for_completion=True):
+def log(command, log_file_path, wait_for_completion=True):
         """
         Run a command and optionally wait for its completion.
 
@@ -161,6 +153,15 @@ def create(type, cluster_name, provider, region, resource_group, project):
             else:
                 click.echo("Running the command in the background.")
 
+
+@cli.command()
+@click.argument('type', type=click.Choice(['cluster']))
+@click.option('--cluster-name', '-cn', help='Name of the cluster to be created', metavar='<cluster_name>')
+@click.option('--provider', '-pr', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
+@click.option('--region', '-r', type=str, help='Cluster region (required for AWS and GCP)', metavar='<region>')
+@click.option('--resource-group', '-rg', type=str, help='Resource group name (required for Azure)', metavar='<resource_group>')
+@click.option('--project', '-p', type=str, help='GCP project ID (required for GCP)', metavar='<project_id>')
+def create(type, cluster_name, provider, region, resource_group, project):
     if type != 'cluster':
         click.echo("Invalid type specified. Only 'cluster' is supported.")
         return
