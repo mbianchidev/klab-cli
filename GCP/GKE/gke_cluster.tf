@@ -1,7 +1,7 @@
 module "gke" {
   source                     = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
-  project_id                 = var.project_id
-  name                       = "${var.cluster_name}-${var.env_name}"
+  project_id                 = var.project
+  name                       = var.cluster_name
   regional                   = var.gke_regional
   region                     = var.region
   zones                      = var.gke_zones
