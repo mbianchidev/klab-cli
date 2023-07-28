@@ -482,7 +482,13 @@ def destroy(param_type, name, region):
                         destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                         if destroy_all == 'yes':
                             os.chdir('../AWS')
-                            subprocess.Popen('terraform destroy -auto-approve', shell=True)
+                            process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={aws_cluster_name}" -var="region={aws_cluster_region}"', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
+                            print("The rest of the resources are destroyin... ")
+                            exit_code = process.wait()
+                            if exit_code == 0:
+                                print("The rest of the resources are destroyed.")
+                            else:
+                                print("The destroy of the resources failed")
                         else:
                             print("You choose not to destroy other resources")
                             exit()
@@ -494,6 +500,7 @@ def destroy(param_type, name, region):
                 elif cluster_provider == "Azure":
                     azure_cluster_name = cluster.get('cluster_name')
                     azure_resource_group = cluster.get('cluster_resource_group')
+                    azure_cluster_region = cluster.get('cluster_region')
 
                     try:
                         describe_command = f"az aks show --name {azure_cluster_name} --resource-group {azure_resource_group} --query provisioningState --output tsv"
@@ -515,7 +522,13 @@ def destroy(param_type, name, region):
                                     destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                     if destroy_all == 'yes':
                                         os.chdir('../Azure')
-                                        subprocess.Popen('terraform destroy -auto-approve', shell=True)
+                                        process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={azure_cluster_name}" -var="location={azure_cluster_region}" -var="resource_group={azure_resource_group}" ', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
+                                        print("The rest of the resources are destroyin... ")
+                                        exit_code = process.wait()
+                                        if exit_code == 0:
+                                            print("The rest of the resources are destroyed ")
+                                        else:
+                                            print("The destroy of the resources failed")
                                     else:
                                         print("You choose not to destroy other resources")
                                         exit()
@@ -579,7 +592,13 @@ def destroy(param_type, name, region):
                                 destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                 if destroy_all == 'yes':
                                     os.chdir('../GCP')
-                                    subprocess.Popen('terraform destroy -auto-approve', shell=True)
+                                    process = subprocess.Popen('terraform destroy -auto-approve', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
+                                    print("The rest of the resources are destroying")
+                                    exit_code = process.wait()
+                                    if exit_code == 0:
+                                        print("The rest of the resources are destroyed ")
+                                    else:
+                                        print("The destroy of the resources failed")
                                 else:
                                     print("You choose not to destroy other resources")
                                     exit()
