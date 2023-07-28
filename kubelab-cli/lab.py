@@ -769,29 +769,38 @@ def delete(type, product, version):
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.argument('cluster', type=click.STRING)
-@click.option('--provider', type=click.Choice(['aws', 'azure', 'gcp']), default=None, help='Cloud provider of the cluster (aws, azure, or gcp)')
-@click.option('--region', type=click.STRING, default=None, help='Region of the cluster (for AWS)')
-@click.option('--resource-group', type=click.STRING, default=None, help='Resource group of the cluster (for Azure)')
-@click.option('--project', type=click.STRING, default=None, help='GCP project of the cluster (for GCP)')
+@click.option('--provider', '-pr', type=click.Choice(['AWS', 'Azure', 'GCP']), default=None, help='Cloud provider of the cluster (AWS, Azure, or GCP)')
+@click.option('--region', '-r', type=click.STRING, default=None, help='Region of the cluster (AWS and GCP)')
+@click.option('--resource-group', '-rg', type=click.STRING, default=None, help='Resource group of the cluster (Azure)')
+@click.option('--project', '-p', type=click.STRING, default=None, help='GCP project of the cluster (GCP)')
 def use(type, cluster, provider, region, resource_group, project):
     if type != 'cluster':
         print("Invalid argument type. Please provide 'cluster' as the argument type.")
         return
     
-    if provider == 'aws':
+    if provider == 'AWS':
         if not region:
-            print("Region is required. Please provide the --region option.")
+            print("Region is required.")
+            print("Please provide the --region <cluster-region> or -r <cluster-region> option.")
             return
-    elif provider == 'azure':
+    elif provider == 'Azure':
         if not resource_group:
-            print("Resource group is required. Please provide the --resource-group option.")
+            print("Resource group is required.")
+            print("Please provide the --resource-group <resource-group> or -rg <resource-group> option.")
             return
-    elif provider == 'gcp':
+    elif provider == 'GCP':
         if not project:
-            print("GCP project is required. Please provide the --project option.")
+            print("GCP project is required.")
+            print("Please provide the --project <project-id> or -pr <project-id> option.")
             return
+        if not region:
+            print("Region is required.")
+            print("Please provide the --region <cluster-region> or -r <cluster-region> option.")
+            return
+
     else:
-        print("Invalid provider. Please provide 'aws', 'azure', or 'gcp' as the provider.")
+        print("Invalid provider. Please provide 'AWS', 'Azure', or 'GCP' as the provider.")
+        print("Use the --provider <cloud-provider> or -pr <cloud-provider> option.")
         return
     
     cluster_dir = 'cluster_credentials'
@@ -804,7 +813,7 @@ def use(type, cluster, provider, region, resource_group, project):
             try:
                 data = yaml.safe_load(file)
                 if not data:
-                    data = []  # Initialize an empty list if the file is empty
+                    data = []
             except yaml.YAMLError as e:
                 print("Error loading cluster.yaml:", str(e))
                 return
@@ -815,10 +824,7 @@ def use(type, cluster, provider, region, resource_group, project):
 
     if cluster_info is None:
         # Cluster not managed, add it to data list
-        if provider == 'aws':
-            if not region:
-                print("Region is required. Please provide the --region option.")
-                return
+        if provider == 'AWS':
             cluster_info = {
                 'cluster_credentials': "credentials/aws_kube_credential",
                 'cluster_name': f"{cluster}",
@@ -826,10 +832,7 @@ def use(type, cluster, provider, region, resource_group, project):
                 'cluster_region': f"{region}",
                 'managed_by': "USER",
             }
-        elif provider == 'azure':
-            if not resource_group:
-                print("Resource group is required. Please provide the --resource-group option.")
-                return
+        elif provider == 'Azure':
             cluster_info = {
                 'cluster_credentials': "credentials/azure_kube_credential",
                 'cluster_name': f"{cluster}",
@@ -837,10 +840,7 @@ def use(type, cluster, provider, region, resource_group, project):
                 'cluster_resource_group': f"{resource_group}",
                 'managed_by': "USER",
             }
-        elif provider == 'gcp':
-            if not project:
-                print("GCP project is required. Please provide the --project option.")
-                return
+        elif provider == 'GCP':
             cluster_info = {
                 'cluster_credentials': "credentials/gcp_kube_credential",
                 'cluster_name': f"{cluster}",
@@ -848,9 +848,6 @@ def use(type, cluster, provider, region, resource_group, project):
                 'cluster_project': f"{project}",
                 'managed_by': "USER",
             }
-        else:
-            print("Invalid provider. Please provide 'aws', 'azure', or 'gcp' as the provider.")
-            return
 
         data.append(cluster_info)
 
@@ -863,15 +860,12 @@ def use(type, cluster, provider, region, resource_group, project):
         cluster_info['managed_by'] = 'KUBELAB'
 
     # Update the Kubernetes configuration based on the cluster's cloud provider
-    if provider == 'aws':
+    if provider == 'AWS':
         update_kubeconfig_cmd = ["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster]
-    elif provider == 'azure':
+    elif provider == 'Azure':
         update_kubeconfig_cmd = ["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster]
-    elif provider == 'gcp':
-        update_kubeconfig_cmd = ["gcloud", "container", "clusters", "get-credentials", cluster, "--project", project]
-    else:
-        print("Invalid provider. Please provide 'aws', 'azure', or 'gcp' as the provider.")
-        return
+    elif provider == 'GCP':
+        update_kubeconfig_cmd = ["gcloud", "container", "clusters", "get-credentials", cluster, "--project", project, "--region", region]
 
     update_kubeconfig_process = subprocess.run(update_kubeconfig_cmd)
 
