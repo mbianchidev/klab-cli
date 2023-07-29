@@ -483,7 +483,7 @@ def destroy(param_type, name, region):
                         if destroy_all == 'yes':
                             os.chdir('../AWS')
                             process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={aws_cluster_name}" -var="region={aws_cluster_region}"', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
-                            print("The rest of the resources are destroyin... ")
+                            print("The rest of the resources are being destroyed... ")
                             exit_code = process.wait()
                             if exit_code == 0:
                                 print("The rest of the resources are destroyed.")
@@ -523,7 +523,7 @@ def destroy(param_type, name, region):
                                     if destroy_all == 'yes':
                                         os.chdir('../Azure')
                                         process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={azure_cluster_name}" -var="location={azure_cluster_region}" -var="resource_group={azure_resource_group}" ', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
-                                        print("The rest of the resources are destroyin... ")
+                                        print("The rest of the resources are being destroyed... ")
                                         exit_code = process.wait()
                                         if exit_code == 0:
                                             print("The rest of the resources are destroyed ")
@@ -593,7 +593,7 @@ def destroy(param_type, name, region):
                                 if destroy_all == 'yes':
                                     os.chdir('../GCP')
                                     process = subprocess.Popen('terraform destroy -auto-approve', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
-                                    print("The rest of the resources are destroying")
+                                    print("The rest of the resources are being destroyed...")
                                     exit_code = process.wait()
                                     if exit_code == 0:
                                         print("The rest of the resources are destroyed ")
