@@ -154,6 +154,17 @@ def log(command, log_file_path, wait_for_completion=True):
                 click.echo("Running the command in the background.")
 
 
+def create_log_directory_and_file(log_file_path):
+    # Create the log directory if it doesn't exist
+    if not os.path.exists('log'):
+        os.makedirs('log')
+
+    # Create the log file if it doesn't exist
+    if not os.path.exists(log_file_path):
+        with open(log_file_path, 'w'):
+            pass
+
+
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--cluster-name', '-cn', help='Name of the cluster to be created', metavar='<cluster_name>')
@@ -166,30 +177,34 @@ def create(type, cluster_name, provider, region, resource_group, project):
         click.echo("Invalid type specified. Only 'cluster' is supported.")
         return
 
-    if not cluster_name:
-        click.echo("Cluster name is required!")
-        click.echo("Make sure to add --cluster-name <cluster-name> or -cn <cluster-name> option.")
-        return
-
     try:
         if provider == "AWS":
+
+            if not cluster_name:
+                click.echo("Cluster name is required!")
+                click.echo("Make sure to add --cluster-name <cluster-name> or -cn <cluster-name> option.")
+                cluster_name = "eks"
+                click.echo(f"Default cluster name: {cluster_name} will be used.")
+                click.echo(85*"=")
+            
             if not region:
                 click.echo("Region is required for AWS!")
                 click.echo("Make sure to add --region <region> or -r <region> option.")
-                return
-
+                region = "eu-west-2"
+                click.echo(f"Default region: {region} will be used.")
+                click.echo(85*"=")
+            
             os.chdir('../AWS')
 
             log_file_path = 'log/kubelab.log'
+
+            create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
             log(
                 f'terraform plan -var="cluster_name={cluster_name}" -var="region={region}"',
                 log_file_path
             )
-
-            if not os.path.exists('log'):
-                os.makedirs('log')
 
             click.echo("Terraform plan was completed successfully!")
 
@@ -221,9 +236,6 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 f'terraform plan -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}"',
                 log_file_path
             )
-
-            if not os.path.exists('log'):
-                os.makedirs('log')
 
             click.echo("Terraform plan was completed successfully!")
 

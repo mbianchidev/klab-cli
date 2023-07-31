@@ -35,10 +35,12 @@ module "EKS" {
 
 variable "region" {
   type = string
+  default = "eu-west-2"
 }
 
 variable "cluster_name" {
   type = string
+  default = "eks"
 }
 
 # output "ebs_ids" {
