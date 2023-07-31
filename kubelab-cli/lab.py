@@ -181,18 +181,12 @@ def create(type, cluster_name, provider, region, resource_group, project):
         if provider == "AWS":
 
             if not cluster_name:
-                click.echo("Cluster name is required!")
-                click.echo("Make sure to add --cluster-name <cluster-name> or -cn <cluster-name> option.")
                 cluster_name = "eks"
-                click.echo(f"Default cluster name: {cluster_name} will be used.")
-                click.echo(85*"=")
+                click.echo(f"No cluster name set, default cluster name: {cluster_name} will be used.")
             
             if not region:
-                click.echo("Region is required for AWS!")
-                click.echo("Make sure to add --region <region> or -r <region> option.")
                 region = "eu-west-2"
-                click.echo(f"Default region: {region} will be used.")
-                click.echo(85*"=")
+                click.echo(f"No region set, default region: {region} will be used.")
             
             os.chdir('../AWS')
 
@@ -218,25 +212,16 @@ def create(type, cluster_name, provider, region, resource_group, project):
 
         elif provider == "Azure":
             if not cluster_name:
-                click.echo("Cluster name is required!")
-                click.echo("Make sure to add --cluster-name <cluster-name> or -cn <cluster-name> option.")
                 cluster_name = "aks"
-                click.echo(f"Default cluster name: {cluster_name} will be used.")
-                click.echo(85*"=")
+                click.echo(f"No cluster name set, default cluster name: {cluster_name} will be used.")
 
             if not resource_group:
-                click.echo("Resource group is required for Azure!")
-                click.echo("Make sure to add --resource-group <resource-group> or -rg <resource-group> option.")
                 resource_group = "kubelab_resource_group"
-                click.echo(f"Default resource group: {resource_group} will be used.")
-                click.echo(85*"=")
+                click.echo(f"No resource group set, default resource group: {resource_group} will be used.")
 
             if not region:
-                click.echo("Region is required for Azure!")
-                click.echo("Make sure to add --region <region> or -r <region> option.")
                 region = "eastus"
-                click.echo(f"Default region: {region} will be used.")
-                click.echo(85*"=")
+                click.echo(f"No region set, default region: {region} will be used.")
 
             os.chdir('../Azure')
 
@@ -262,18 +247,12 @@ def create(type, cluster_name, provider, region, resource_group, project):
 
         elif provider == "GCP":
             if not cluster_name:
-                click.echo("Cluster name is required!")
-                click.echo("Make sure to add --cluster-name <cluster-name> or -cn <cluster-name> option.")
                 cluster_name = "gke"
-                click.echo(f"Default cluster name: {cluster_name} will be used.")
-                click.echo(85*"=")
+                click.echo(f"No cluster name set, default cluster name: {cluster_name} will be used.")
 
             if not region:
-                click.echo("Region is required for GCP!")
-                click.echo("Make sure to add --region <region> or -r <region> option.")
                 region = "europe-central2"
-                click.echo(f"Default region: {region} will be used")
-                click.echo(85*"=")
+                click.echo(f"No region set, default region: {region} will be used.")
 
             if not project:
                 click.echo("Project ID is required for GCP!")
