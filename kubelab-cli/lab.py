@@ -268,16 +268,17 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 click.echo(f"Default cluster name: {cluster_name} will be used.")
                 click.echo(85*"=")
 
-            if not project:
-                click.echo("Project ID is required for GCP!")
-                click.echo("Make sure to add --project <project-id> or -p <project-id> option.")
-                return
-
             if not region:
                 click.echo("Region is required for GCP!")
                 click.echo("Make sure to add --region <region> or -r <region> option.")
                 region = "europe-central2"
                 click.echo(f"Default region: {region} will be used")
+                click.echo(85*"=")
+
+            if not project:
+                click.echo("Project ID is required for GCP!")
+                click.echo("Make sure to add --project <project-id> or -p <project-id> option.")
+                return
 
             os.chdir('../GCP')
 
