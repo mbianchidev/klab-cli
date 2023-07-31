@@ -26,7 +26,7 @@ module "AKS" {
   resource_group_name = var.resource_group
   prefix              = "testing"
   cluster_name        = var.cluster_name
-  location            = var.location # "eastus"
+  location            = var.location
   kubernetes_version  = "1.26"
   enable_auto_scaling = true
   node_vm_size        = "Standard_D2s_v3"
@@ -37,14 +37,17 @@ module "AKS" {
 
 variable "resource_group" {
   type = string
+  default = "kubelab_resource_group"
 }
 
 variable "cluster_name" {
   type = string
+  default = "aks"
 }
 
 variable "location" {
   type = string
+  default = "eastus"
 }
 
 output "cluster_name" {

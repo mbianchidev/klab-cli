@@ -217,19 +217,32 @@ def create(type, cluster_name, provider, region, resource_group, project):
             click.echo("Cluster will be created in 15 minutes and for logs check log/kubelab.log file")
 
         elif provider == "Azure":
+            if not cluster_name:
+                click.echo("Cluster name is required!")
+                click.echo("Make sure to add --cluster-name <cluster-name> or -cn <cluster-name> option.")
+                cluster_name = "aks"
+                click.echo(f"Default cluster name: {cluster_name} will be used.")
+                click.echo(85*"=")
+
             if not resource_group:
                 click.echo("Resource group is required for Azure!")
                 click.echo("Make sure to add --resource-group <resource-group> or -rg <resource-group> option.")
-                return
+                resource_group = "kubelab_resource_group"
+                click.echo(f"Default resource group: {resource_group} will be used.")
+                click.echo(85*"=")
 
             if not region:
                 click.echo("Region is required for Azure!")
                 click.echo("Make sure to add --region <region> or -r <region> option.")
-                return
+                region = "eastus"
+                click.echo(f"Default region: {region} will be used.")
+                click.echo(85*"=")
 
             os.chdir('../Azure')
 
             log_file_path = 'log/kubelab.log'
+
+            create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
             log(
