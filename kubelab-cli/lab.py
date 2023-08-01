@@ -404,7 +404,8 @@ def list(type, provider, name):
 @click.argument('param_type', type=click.Choice(['cluster']))
 @click.option('--name', type=click.STRING, help='What is the cluster named as?')
 @click.option('--region', type=click.STRING, help='Where is the cluster located?')
-def destroy(param_type, name, region):
+@click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed with destruction.')
+def destroy(param_type, name, region, yes):
     if param_type == "cluster":
         if name is None and region is None:
             print("Please provide both the cluster name and region.")
@@ -572,7 +573,7 @@ def destroy(param_type, name, region):
                         print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} exists.")
 
                         confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
-                        if confirmation == 'yes':
+                        if confirmation == 'yes' or yes:
                             # Retrieve the available zones for the specified region using the Google Cloud API
                             zone_command = f"gcloud compute zones list --filter='{gcp_cluster_region}' --format='value(name)'"
                             try:
