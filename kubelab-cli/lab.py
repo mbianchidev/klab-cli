@@ -659,6 +659,7 @@ def add(type, product, version):
     operatorRepo = dict()
     operatorDir = dict()
     operatorImage = dict()
+    imageVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -674,20 +675,22 @@ def add(type, product, version):
             elif line.startswith('operatorRepo'):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
             elif line.startswith('operatorImage'):
-                operatorImage['operatorImage'] = line.split(': ')[1].strip()    
+                operatorImage['operatorImage'] = line.split(': ')[1].strip()
+            elif line.startswith('imageVersion'):
+                imageVersion['imageVersion'] = line.split(': ')[1].strip()
     if installed_type['installed_type'] == "deployment":
         deploy = Deploy(productName=product)
         deploy.switch_operator(productName=product)
         type = 'operator'
     if installed_type['installed_type'] == "operator":
         type = 'deployment'
-        deploy = Deploy(op_version=version, productName=product)
+        deploy = Deploy(op_version=version, productName=product, operatorDir=operatorDir['operatorDir'])
         deploy.switch_deployment(productName=product)
     elif type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
@@ -711,7 +714,39 @@ def update(type, product, version):
 
         print(f'Nginx operator updated successfully with {version} version')
     elif type == 'deployment' and product == 'nginx':
-        print("Cant't update via deployment type must be changed in the yaml manifest.")
+        product_cat = dict()
+        installed_type = dict()
+        deploymentFile = dict()
+        operatorRepo = dict()
+        operatorDir = dict()
+        operatorImage = dict()
+        imageVersion = dict()
+        installed_version = dict()
+        with open("catalog/catalog.yaml", 'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                line = line.strip()
+                if line.startswith('- product'):
+                    product_cat['product'] = line.split(':')[1].strip()
+                elif line.startswith('installed_type'):
+                    installed_type['installed_type'] = line.split(':')[1].strip()
+                elif line.startswith('deploymentFile'):
+                    deploymentFile['deploymentFile'] = line.split(':')[1].strip()
+                elif line.startswith('operatorDir'):
+                    operatorDir['operatorDir'] = line.split(':')[1].strip()
+                elif line.startswith('operatorRepo'):
+                    operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
+                elif line.startswith('operatorImage'):
+                    operatorImage['operatorImage'] = line.split(': ')[1].strip()
+                elif line.startswith('imageVersion'):
+                    imageVersion['imageVersion'] = line.split(': ')[1].strip()
+                elif line.startswith('installed_version'):
+                    installed_version['installed_version'] = line.split(': ')[1].strip()
+        if installed_type is None and installed_version is None:
+            print("Deployment is not installed")
+        print(f"Updating the deployment to version: {version}")
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
+        deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     else:
         print('Invalid configuration.')
 
@@ -719,7 +754,7 @@ def update(type, product, version):
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
+@click.option('--version', type=click.STRING, default='1.5.0', help="Operator version", required=False)
 def delete(type, product, version):
     product_cat = dict()
     installed_type = dict()
@@ -727,6 +762,7 @@ def delete(type, product, version):
     operatorRepo = dict()
     operatorDir = dict()
     operatorImage = dict()
+    imageVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -743,6 +779,8 @@ def delete(type, product, version):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
             elif line.startswith('operatorImage'):
                 operatorImage['operatorImage'] = line.split(': ')[1].strip()
+            elif line.startswith('imageVersion'):
+                imageVersion['imageVersion'] = line.split(': ')[1].strip()
     if type == 'operator' and product == 'nginx':
         print(f'Deleting NGINX with {version} version')
         repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
@@ -761,7 +799,8 @@ def delete(type, product, version):
                 'operatorVersion': 'None',
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
-                'deploymentFile': deploymentFile['deploymentFile']
+                'deploymentFile': deploymentFile['deploymentFile'],
+                'imageVersion': imageVersion['imageVersion']
             },
         ]
         with open('../../catalog.yaml', 'w') as file:
@@ -778,7 +817,8 @@ def delete(type, product, version):
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
-                file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
+                file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
+                file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
         print(f'Nginx operator deleted successfully with {version} version')
     elif type == 'deployment' and product == 'nginx':
         print("Deleting nginx deployment with latest image version")
@@ -797,7 +837,8 @@ def delete(type, product, version):
                 'operatorVersion': 'None',
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
-                'deploymentFile': deploymentFile['deploymentFile']
+                'deploymentFile': deploymentFile['deploymentFile'],
+                'imageVersion': imageVersion['imageVersion']
             },
         ]
         with open('../../catalog.yaml', 'w') as file:
@@ -814,7 +855,8 @@ def delete(type, product, version):
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
-                file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
+                file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
+                file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
     else:
         print('Invalid configuration.')
 
