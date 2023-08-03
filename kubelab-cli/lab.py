@@ -442,7 +442,10 @@ def destroy(param_type, name, region, yes):
                             print("Error occurred during describe-cluster command. Please check the command and try again.")
                         return
 
-                    confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                    if yes:
+                        confirmation = 'yes'
+                    else:
+                        confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
                     if confirmation == 'yes':
                         check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
 
@@ -495,10 +498,14 @@ def destroy(param_type, name, region, yes):
                         data.remove(cluster)
                         with open('cluster_credentials/cluster.yaml', 'w') as file:
                             yaml.dump(data, file)
-                        destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
+                        if yes:
+                            destroy_all = 'yes'
+                        else:
+                            destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                         if destroy_all == 'yes':
                             os.chdir('../AWS')
-                            process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={aws_cluster_name}" -var="region={aws_cluster_region}"', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
+                            destroy_all_command = f'terraform destroy -auto-approve -var="cluster_name={aws_cluster_name}" -var="region={aws_cluster_region}"'
+                            process = subprocess.Popen(destroy_all_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True, universal_newlines=True)
                             print("The rest of the resources are being destroyed... ")
                             exit_code = process.wait()
                             if exit_code == 0:
@@ -526,7 +533,10 @@ def destroy(param_type, name, region, yes):
                         if provisioning_state == "Succeeded":
                             print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} exists.")
                             try:
-                                confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                                if yes:
+                                    confirmation = 'yes'
+                                else:
+                                    confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
                                 if confirmation == 'yes':
                                     delete_command = f"az aks delete --name {azure_cluster_name} --resource-group {azure_resource_group} --yes"
                                     print(f"Deleting AKS cluster named {azure_cluster_name} in resource group {azure_resource_group}.")
@@ -535,8 +545,11 @@ def destroy(param_type, name, region, yes):
                                     data.remove(cluster)
                                     with open('cluster_credentials/cluster.yaml', 'w') as file:
                                         yaml.dump(data, file)
-                                    destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
-                                    if destroy_all == 'yes':
+                                    if yes:
+                                        destroy_all = 'yes'
+                                    else:
+                                        destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
+                                    if destroy_all == 'yes' or yes:
                                         os.chdir('../Azure')
                                         process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={azure_cluster_name}" -var="location={azure_cluster_region}" -var="resource_group={azure_resource_group}" ', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
                                         print("The rest of the resources are being destroyed... ")
@@ -571,9 +584,11 @@ def destroy(param_type, name, region, yes):
 
                     if matching_cluster:
                         print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} exists.")
-
-                        confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
-                        if confirmation == 'yes' or yes:
+                        if yes:
+                            confirmation = 'yes'
+                        else:
+                            confirmation = input("Are you sure that you want to destroy this cluster? (yes/no): ").lower()
+                        if confirmation == 'yes':
                             # Retrieve the available zones for the specified region using the Google Cloud API
                             zone_command = f"gcloud compute zones list --filter='{gcp_cluster_region}' --format='value(name)'"
                             try:
@@ -605,7 +620,10 @@ def destroy(param_type, name, region, yes):
                                 data.remove(cluster)
                                 with open('cluster_credentials/cluster.yaml', 'w') as file:
                                     yaml.dump(data, file)
-                                destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
+                                if yes:
+                                    destroy_all = 'yes'
+                                else:
+                                    destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                 if destroy_all == 'yes':
                                     os.chdir('../GCP')
                                     process = subprocess.Popen('terraform destroy -auto-approve', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
