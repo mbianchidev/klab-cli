@@ -754,7 +754,6 @@ def update(type, product, version):
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.5.0', help="Operator version", required=False)
 def delete(type, product, version):
     product_cat = dict()
     installed_type = dict()
