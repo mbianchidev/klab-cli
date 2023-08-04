@@ -1,9 +1,11 @@
 import os
 import subprocess
+import yaml
+import re
 
 
 class Deploy:
-    def __init__(self, productName, installed_type=None, deployment_type=None, operatorImage=None, operatorRepo=None, op_version=None, operatorDir=None):
+    def __init__(self, productName, installed_type=None, imageVersion=None, deployment_type=None, operatorImage=None, operatorRepo=None, op_version=None, operatorDir=None):
         # Constructor code here
         self.op_version = op_version
         self.deployment_type = deployment_type
@@ -12,12 +14,23 @@ class Deploy:
         self.installed_type = installed_type
         self.operatorDir = operatorDir
         self.operatorImage = operatorImage
+        self.imageVersion = imageVersion
         pass
 
     def deployment(self, productName, operatorRepo):
         # Deployment code here
+        with open(self.deployment_type, "r") as f:
+            yaml_content = f.read()
+
+        new_image_version = self.imageVersion
+        pattern = r"(image:\s*[\w/-]+:)(.*)"
+        yaml_content = re.sub(pattern, f"image: {productName}:{new_image_version}", yaml_content)
+
+        with open(self.deployment_type, "w") as f:
+            f.write(yaml_content)
+
         process = subprocess.Popen(['kubectl', 'apply', '-f', self.deployment_type], stdout=subprocess.PIPE, universal_newlines=True)
-        print(f"Installing {productName} with deployment and latest image version \n ")
+        print(f"Installing {productName} with deployment and {self.imageVersion} image version \n ")
         exit_code = process.wait()
         if exit_code == 0:
             print(f"Successfully deployed {productName} with deployment \n ")
@@ -29,13 +42,14 @@ class Deploy:
                 'default_version': 'latest',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
-                'installed_version': 'latest',
+                'installed_version': self.imageVersion,
                 'installed_type': self.installed_type,
                 'operatorRepo': operatorRepo,
                 'operatorVersion': self.op_version,
                 'operatorImage': self.operatorImage,
                 'operatorDir': self.operatorDir,
-                'deploymentFile': self.deployment_type
+                'deploymentFile': self.deployment_type,
+                'imageVersion': self.imageVersion
             },
         ]
         with open('catalog/catalog.yaml', 'w') as file:
@@ -52,7 +66,8 @@ class Deploy:
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
-                file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))
+                file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
+                file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
 
     def operator(self,  productName, operatorRepo):
         # Operator code here
@@ -83,7 +98,8 @@ class Deploy:
                 'operatorVersion': self.op_version,
                 'operatorImage': self.operatorImage,
                 'operatorDir': self.operatorDir,
-                'deploymentFile': self.deployment_type
+                'deploymentFile': self.deployment_type,
+                'imageVersion': self.imageVersion
             },
         ]
         with open('../../catalog.yaml', 'w') as file:
@@ -100,7 +116,8 @@ class Deploy:
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
-                file.write("  deploymentFile: {}\n\n".format(item['deploymentFile']))           
+                file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
+                file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
         pass
 
     def switch_operator(self, productName):

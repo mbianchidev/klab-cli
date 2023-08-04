@@ -178,5 +178,5 @@ lab_state.json
 state/
 credentials/
 
-catalog/
+
 kubelab.log
