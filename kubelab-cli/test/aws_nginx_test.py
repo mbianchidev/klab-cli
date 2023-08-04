@@ -1,6 +1,9 @@
 import subprocess
 import pytest
 import os
+import time
+import requests
+from kubernetes import client, config
 
 class TestAWSNginx:
     def test_init(self):
@@ -8,64 +11,59 @@ class TestAWSNginx:
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         print("Changed directory to:", os.getcwd())
         result = subprocess.run(['python3', 'lab.py', 'init'], capture_output=True, text=True)
-        print("Init result:", result.stdout)
         assert result.returncode == 0
 
     def test_create_aws_cluster(self):
         print("Running test create cluster in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'AWS'], capture_output=True, text=True)
-        print("AWS create cluster result:", result.stdout)
+        result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '-pr', 'AWS'], capture_output=True, text=True)
         assert result.returncode == 0
+        time.sleep(750)
+        print("AWS cluster has been created!")
 
-    # def test_create_azure_cluster(self):
-    #     print("Running test create cluster in Azure")
+    # def test_install_nginx_deployment(self):
     #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-    #     result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'Azure'], capture_output=True, text=True)
-    #     print("Azure create cluster result:", result.stdout)
-    #     assert result.returncode == 0
+    #     subprocess.run(['python3', 'lab.py', 'use', 'cluster', 'eks', '--provider', 'aws', '--region', 'us-west-2'])
+    #     subprocess.run(['python3', 'lab.py', 'add', 'deployment', 'nginx', '--version', 'latest-1'])
 
-    # def test_create_gcp_cluster(self):
-    #     print("Running test create cluster in GCP")
-    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-    #     result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '--cloud-provider', 'GCP'], capture_output=True, text=True)
-    #     print("GCP create cluster result:", result.stdout)
-    #     assert result.returncode == 0
+    #     # Load Kubernetes configuration
+    #     config.load_kube_config()
 
-    # def test_nginx_deployment(self):
-    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-    #     result = subprocess.run(['python3', 'lab.py', 'add', 'deployment', 'nginx'], capture_output=True, text=True)
-    #     assert result.returncode == 0
+    #     # Create Kubernetes API client
+    #     api = client.CoreV1Api()
 
-    # def test_catalog_yaml(self):
-    #     os.chdir(os.path.join(os.path.dirname(__file__), '../catalog'))
-    #     catalog_path = os.path.join(os.getcwd(), 'catalog.yaml')
-    #     assert os.path.isfile(catalog_path)
-    #     with open(catalog_path, 'r') as file:
-    #         catalog = file.read()
-    #         assert 'nginx' in catalog
+    #     # Verify NGINX deployment
+    #     deployment_name = "nginx-deployment"  # Replace with your actual NGINX deployment name
+    #     namespace = "default"  # Replace with the appropriate namespace
+    #     try:
+    #         deployment = api.read_namespaced_deployment(deployment_name, namespace)
+    #     except client.ApiException as e:
+    #         assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
 
-    # def test_update_nginx_version(self):
-    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-    #     result = subprocess.run(['python3', 'lab.py', 'update', '--type', 'deployment', 'nginx'], capture_output=True, text=True)
-    #     assert result.returncode == 0
+    #     # Verify NGINX version (Assuming NGINX version is available in deployment annotations or labels)
+    #     # Example: assert deployment.metadata.annotations.get('nginx.version') == 'latest-1', "Incorrect NGINX version installed"
 
-    # def test_switch_to_operator(self):
-    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-    #     result = subprocess.run(['python3', 'lab.py', 'update', '--type', 'operator', 'nginx'], capture_output=True, text=True)
-    #     assert result.returncode == 0
+    #     # Verify NGINX is accessible
+    #     nginx_service_name = "nginx-service"  # Replace with your actual NGINX service name
+    #     try:
+    #         service = api.read_namespaced_service(nginx_service_name, namespace)
+    #     except client.ApiException as e:
+    #         assert False, f"NGINX service '{nginx_service_name}' not found in namespace '{namespace}'"
 
-    # def test_remove_operator_installation(self):
-    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-    #     result = subprocess.run(['python3', 'lab.py', 'delete', '--type', 'operator', 'nginx'], capture_output=True, text=True)
-    #     assert result.returncode == 0
+    #     # Temporary NGINX URL for testing (assuming the service is of type LoadBalancer)
+    #     nginx_test_url = f"http://{service.status.load_balancer.ingress[0].hostname}:80"
 
-    # def test_destroy_cluster(self):
-    #     os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-    #     cluster_name = "YOUR_CLUSTER_NAME"
-    #     cluster_region = "YOUR_CLUSTER_REGION"
-    #     result = subprocess.run(['python3', 'lab.py', 'destroy', 'cluster', cluster_name, cluster_region], capture_output=True, text=True)
-    #     assert result.returncode == 0
+    #     # Verify NGINX accessibility
+    #     response = requests.get(nginx_test_url)
+    #     assert response.status_code == 200, "NGINX is not accessible with HTTP 200"
+
+    def test_destroy_aws_cluster(self):
+        print("Running destroy cluster in AWS")
+        os.chdir(os.path.join(os.path.dirname(__file__), '..'))
+        result = subprocess.run(['python3', 'lab.py', 'destroy', 'cluster', '--name', 'eks', '--region', 'eu-west-2', '-y'], capture_output=True, text=True)
+        assert result.returncode == 0
+        print("AWS cluster has been destroyed!")
+
 
 if __name__ == '__main__':
     pytest.main()
