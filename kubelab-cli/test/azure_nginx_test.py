@@ -18,7 +18,7 @@ class TestAzureNginx:
         print("Azure create cluster result:", result.stdout)
         assert result.returncode == 0
         print("Azure cluster has been created!")
-    
+
     def test_use_azure_cluster(self):
         print("Running test use for cluster in Azure")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
