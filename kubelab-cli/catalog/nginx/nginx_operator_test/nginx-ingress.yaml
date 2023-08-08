@@ -118,7 +118,7 @@ spec:
         #   port: 5353
         #   protocol: TCP
     enableSnippets: false
-    healthStatus: false
+    healthStatus: true
     healthStatusURI: "/nginx-health"
     nginxStatus:
       enable: true
