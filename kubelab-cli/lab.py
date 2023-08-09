@@ -747,7 +747,9 @@ def update(type, product, version):
         print(f"Updating the deployment to version: {version}")
         deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
+
         print(f"Deployment is updated to {imageVersion['imageVersion']}")
+
     else:
         print('Invalid configuration.')
 
@@ -820,6 +822,7 @@ def delete(type, product):
                 file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
                 file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
         print(f'Nginx operator deleted successfully with {imageVersion["imageVersion"]} version')
+
     elif type == 'deployment' and product == 'nginx':
         print("Deleting nginx deployment with latest image version")
         deploy_repo = "catalog/nginx/nginx_deployment"
