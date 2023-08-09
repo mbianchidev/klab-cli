@@ -754,7 +754,7 @@ def update(type, product, version):
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-def delete(type, product, version):
+def delete(type, product):
     product_cat = dict()
     installed_type = dict()
     deploymentFile = dict()
@@ -781,7 +781,7 @@ def delete(type, product, version):
             elif line.startswith('imageVersion'):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
     if type == 'operator' and product == 'nginx':
-        print(f'Deleting NGINX with {version} version')
+        print(f'Deleting NGINX with {imageVersion["imageVersion"]} version')
         repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
         os.chdir(repo_dir)
         # Delete the deployed operator
@@ -818,7 +818,7 @@ def delete(type, product, version):
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
                 file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
-        print(f'Nginx operator deleted successfully with {version} version')
+        print(f'Nginx operator deleted successfully with {imageVersion["imageVersion"]} version')
     elif type == 'deployment' and product == 'nginx':
         print("Deleting nginx deployment with latest image version")
         deploy_repo = "catalog/nginx/nginx_deployment"

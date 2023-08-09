@@ -33,14 +33,14 @@ class TestAWSNginx:
         print("Running test for add command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'add', 'nginx'], capture_output=True, text=True)
+        time.sleep(90)
         print("AWS add command result:", result.stdout)
-        time.sleep(10)
         config.load_kube_config()
 
         # Create Kubernetes API client
         api = client.AppsV1Api()
-        deployment_name = "nginx"  # Replace with your actual NGINX deployment name
-        namespace = "default"  # Replace with the appropriate namespace
+        deployment_name = "nginx"
+        namespace = "default"
         try:
             deployment = api.read_namespaced_deployment(deployment_name, namespace)
         except client.ApiException as e:
@@ -48,7 +48,7 @@ class TestAWSNginx:
         # Verify NGINX is accessible
         api_core = client.CoreV1Api()
 
-        nginx_service_name = "nginx"  # Replace with your actual NGINX service name
+        nginx_service_name = "nginx"
         try:
             service = api_core.read_namespaced_service(nginx_service_name, namespace)
         except client.ApiException as e:
@@ -89,7 +89,7 @@ class TestAWSNginx:
         except client.ApiException as e:
             assert False, f"NGINX service '{nginx_service_name}' not found in namespace '{namespace}'"
 
-        nginx_test_ip = service.status.load_balancer.ingress[0].ip
+        nginx_test_ip = service.status.load_balancer.ingress[0].hostname
         nginx_test_url = f"http://{nginx_test_ip}:80"
 
         try:
@@ -105,16 +105,15 @@ class TestAWSNginx:
         print("Running test for switch to operator command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         subprocess.run(['python3', 'lab.py', 'add', 'nginx'])
-        # print("AWS add command result:", result.stdout)
         time.sleep(10)
         subprocess.run(['kubectl', 'apply', '-f', 'catalog/nginx/nginx_operator_test/nginx-ingress.yaml'])
-        time.sleep(10)
+        time.sleep(90)
         config.load_kube_config()
 
         # Create Kubernetes API client
         api = client.AppsV1Api()
-        deployment_name = "nginxingress-sample-nginx-ingress-controller"  # Replace with your actual NGINX deployment name
-        namespace = "default"  # Replace with the appropriate namespace
+        deployment_name = "nginxingress-sample-nginx-ingress-controller"
+        namespace = "default"
         try:
             deployment = api.read_namespaced_deployment(deployment_name, namespace)
         except client.ApiException as e:
@@ -122,13 +121,13 @@ class TestAWSNginx:
         # Verify NGINX is accessible
         api_core = client.CoreV1Api()
 
-        nginx_service_name = "nginxingress-sample-nginx-ingress-controller"  # Replace with your actual NGINX service name
+        nginx_service_name = "nginxingress-sample-nginx-ingress-controller"
         try:
             service = api_core.read_namespaced_service(nginx_service_name, namespace)
         except client.ApiException as e:
             assert False, f"NGINX service '{nginx_service_name}' not found in namespace '{namespace}'"
 
-        nginx_test_ip = service.status.load_balancer.ingress[0].ip
+        nginx_test_ip = service.status.load_balancer.ingress[0].hostname
         nginx_test_url = f"http://{nginx_test_ip}:/nginx-health"
 
         try:
@@ -137,7 +136,6 @@ class TestAWSNginx:
             print("NGINX is installed and accessible with HTTP 200", response)
         except requests.exceptions.RequestException as e:
             assert False, f"Error making request to NGINX: {e}"
-        # assert result.returncode == 0
         time.sleep(10)
 
     def test_delete_operator(self):
