@@ -460,7 +460,7 @@ def destroy(param_type, name, region, yes):
                                     check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
                                     delete_node_group_command = f"aws eks delete-nodegroup --cluster-name {aws_cluster_name} --nodegroup-name {node_group} --region {aws_cluster_region}"
                                     print(f"Node group {node_group} is being destroyed..")
-                                    subprocess.Popen(delete_node_group_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True).communicate() 
+                                    subprocess.Popen(delete_node_group_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True).communicate()
 
                                     while True:
                                         # Run the AWS CLI command to list node groups
