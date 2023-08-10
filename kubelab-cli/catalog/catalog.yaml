@@ -11,4 +11,5 @@
   operatorImage: nginx/nginx-ingress-operator
   operatorDir: catalog/nginx/nginx-ingress-helm-operator
   deploymentFile: catalog/nginx/nginx_deployment/deployment.yaml
-  imageVersion: 1.19.1
+  imageVersion: 1.20.1
+
