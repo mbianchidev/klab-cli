@@ -6,14 +6,14 @@ import requests
 from kubernetes import client, config
 
 class TestAWSNginx:
-    def test_init(self):
+    def test_aws_init(self):
         print("Running test_init")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         print("Changed directory to:", os.getcwd())
         result = subprocess.run(['python3', 'lab.py', 'init'], capture_output=True, text=True)
         assert result.returncode == 0
 
-    def test_create_aws_cluster(self):
+    def test_aws_create_cluster(self):
         print("Running test create cluster in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'create', 'cluster', '-pr', 'AWS'], capture_output=True, text=True)
@@ -21,7 +21,7 @@ class TestAWSNginx:
         assert result.returncode == 0
         print("AWS cluster has been created!")
 
-    def test_use_aws_cluster(self):
+    def test_aws_use_cluster(self):
         print("Running test for use command for cluster in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'use', 'cluster', 'eks', '--provider', 'AWS', '-r', 'eu-west-2'])
@@ -29,7 +29,7 @@ class TestAWSNginx:
         assert result.returncode == 0
         print("Use for AWS cluster has passed.")
         
-    def install_nginx_deployment_aws(self):
+    def test_aws_install_nginx_deployment(self):
         print("Running test for add command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'add', 'nginx'], capture_output=True, text=True)
@@ -65,7 +65,7 @@ class TestAWSNginx:
         time.sleep(10)
         assert result.returncode == 0
     
-    def update_nginx_deployment_aws(self):
+    def test_aws_update_nginx_deployment(self):
         print("Running test for update command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'update', 'nginx', '--type=deployment', '--version=latest'], capture_output=True, text=True)
@@ -101,7 +101,7 @@ class TestAWSNginx:
         assert result.returncode == 0
         time.sleep(5)
 
-    def switch_nginx_deployment_aws(self):
+    def test_aws_switch_nginx_deployment(self):
         print("Running test for switch to operator command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         subprocess.run(['python3', 'lab.py', 'add', 'nginx'])
@@ -138,7 +138,7 @@ class TestAWSNginx:
             assert False, f"Error making request to NGINX: {e}"
         time.sleep(10)
 
-    def test_delete_operator(self):
+    def test_aws_delete_operator(self):
         print("Running test for delete the operator in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'delete', 'nginx', '--type=operator'], capture_output=True, text=True)
@@ -147,7 +147,7 @@ class TestAWSNginx:
         assert result.returncode == 0
         print("Successfully deleted the operator")
 
-    def test_destroy_aws_cluster(self):
+    def test_aws_destroy_cluster(self):
         print("Running destroy cluster in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'destroy', 'cluster', '--name', 'eks', '--region', 'eu-west-2', '-y'], capture_output=True, text=True)
