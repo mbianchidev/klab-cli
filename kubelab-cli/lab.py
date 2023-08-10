@@ -9,8 +9,6 @@ import shutil
 import fnmatch
 import yaml
 from datetime import datetime
-import sys
-import base64
 
 @click.group()
 def cli():
@@ -54,7 +52,7 @@ def init():
                 print("Initializing Terraform for AWS...\n")
                 os.chdir('../AWS')
                 process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-                stdout_output, stderr_output = process.communicate()
+                stderr_output = process.communicate()
                 exit_code = process.wait()
                 if exit_code == 0:
                     log_message(aws_logs_file, "Terraform for AWS is successfully initialized.")
@@ -772,7 +770,7 @@ def delete(type, product):
             elif line.startswith('deploymentFile'):
                 deploymentFile['deploymentFile'] = line.split(':')[1].strip()
             elif line.startswith('operatorDir'):
-                operatorDir['operatorDir'] = line.split(':')[1].strip()    
+                operatorDir['operatorDir'] = line.split(':')[1].strip()
             elif line.startswith('operatorRepo'):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
             elif line.startswith('operatorImage'):
@@ -870,7 +868,7 @@ def use(type, cluster, provider, region, resource_group, project):
     if type != 'cluster':
         print("Invalid argument type. Please provide 'cluster' as the argument type.")
         return
-    
+
     if provider == 'AWS':
         if not region:
             print("Region is required.")
@@ -895,7 +893,7 @@ def use(type, cluster, provider, region, resource_group, project):
         print("Invalid provider. Please provide 'AWS', 'Azure', or 'GCP' as the provider.")
         print("Use the --provider <cloud-provider> or -pr <cloud-provider> option.")
         return
-    
+
     cluster_dir = 'cluster_credentials'
     os.makedirs(cluster_dir, exist_ok=True)
 
