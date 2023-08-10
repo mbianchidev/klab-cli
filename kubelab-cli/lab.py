@@ -747,6 +747,9 @@ def update(type, product, version):
         print(f"Updating the deployment to version: {version}")
         deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
+
+        print(f"Deployment is updated to {imageVersion['imageVersion']}")
+
     else:
         print('Invalid configuration.')
 
@@ -909,7 +912,7 @@ def use(type, cluster, provider, region, resource_group, project):
                 if not data:
                     data = []
             except yaml.YAMLError as e:
-                print("Error loading cluster.yaml:", str(e))
+                print("Error loading cluster.yaml:", str(e)
                 return
     else:
         data = []
