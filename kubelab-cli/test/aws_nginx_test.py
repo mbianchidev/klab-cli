@@ -28,11 +28,11 @@ class TestAWSNginx:
         time.sleep(10)
         assert result.returncode == 0
         print("Use for AWS cluster has passed.")
-        
+
     def test_aws_install_nginx_deployment(self):
         print("Running test for add command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        result = subprocess.run(['python3', 'lab.py', 'add', 'nginx'], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'lab.py', 'add', 'nginx', '--version=1.24.0'], capture_output=True, text=True)
         time.sleep(90)
         print("AWS add command result:", result.stdout)
         config.load_kube_config()
@@ -45,7 +45,8 @@ class TestAWSNginx:
             deployment = api.read_namespaced_deployment(deployment_name, namespace)
         except client.ApiException as e:
             assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
-        # Verify NGINX is accessible
+        
+        print("Deployment found: ", deployment)
         api_core = client.CoreV1Api()
 
         nginx_service_name = "nginx"
@@ -58,13 +59,13 @@ class TestAWSNginx:
         print(nginx_test_ip)
         nginx_test_url = f"http://{nginx_test_ip}:80"
         print(nginx_test_url)
-        
+
         response = requests.get(nginx_test_url)
         assert response.status_code == 200, "NGINX is not accessible with HTTP 200"
         print("NGINX is installed and accessible with HTTP 200", response)
         time.sleep(10)
         assert result.returncode == 0
-    
+
     def test_aws_update_nginx_deployment(self):
         print("Running test for update command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
@@ -81,6 +82,7 @@ class TestAWSNginx:
         except client.ApiException as e:
             assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
 
+        print("Deployment found: ", deployment)
         api_core = client.CoreV1Api()
 
         nginx_service_name = "nginx"
@@ -118,10 +120,11 @@ class TestAWSNginx:
             deployment = api.read_namespaced_deployment(deployment_name, namespace)
         except client.ApiException as e:
             assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
-        # Verify NGINX is accessible
+
+        print("Deployment found: ", deployment)
         api_core = client.CoreV1Api()
 
-        nginx_service_name = "nginxingress-sample-nginx-ingress-controller"
+        nginx_service_name = "nginx"
         try:
             service = api_core.read_namespaced_service(nginx_service_name, namespace)
         except client.ApiException as e:

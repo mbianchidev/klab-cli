@@ -116,7 +116,7 @@ def init():
         print("Initializing Terraform for Google Cloud...")
         os.chdir('../GCP')
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-        stdout_output, stderr_output = process.communicate()
+        stderr_output = process.communicate()
         exit_code = process.wait()
         if exit_code == 0:
             log_message(gcp_logs_file, "Terraform for Google Cloud is successfully initialized.")
@@ -132,26 +132,26 @@ def init():
 
 
 def log(command, log_file_path, wait_for_completion=True):
-        """
-        Run a command and optionally wait for its completion.
+    """
+    Run a command and optionally wait for its completion.
 
-        :param command: The command to execute.
-        :param log_file_path: The path to the log file to store the command output.
-        :param wait_for_completion: If True, wait for the process to complete; otherwise, run it in the background.
-        """
-        with open(log_file_path, 'w') as log_file:
-            process = subprocess.Popen(
-                command,
-                shell=True,
-                text=True,
-                stdout=log_file,
-                stderr=subprocess.STDOUT
-            )
+    :param command: The command to execute.
+    :param log_file_path: The path to the log file to store the command output.
+    :param wait_for_completion: If True, wait for the process to complete; otherwise, run it in the background.
+    """
+    with open(log_file_path, 'w') as log_file:
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            text=True,
+            stdout=log_file,
+            stderr=subprocess.STDOUT
+        )
 
-            if wait_for_completion:
-                process.wait()
-            else:
-                click.echo("Running the command in the background.")
+        if wait_for_completion:
+            process.wait()
+        else:
+            click.echo("Running the command in the background.")
 
 
 def create_log_directory_and_file(log_file_path):
@@ -183,11 +183,11 @@ def create(type, cluster_name, provider, region, resource_group, project):
             if not cluster_name:
                 cluster_name = "eks"
                 click.echo(f"No cluster name set, default cluster name: {cluster_name} will be used.")
-            
+
             if not region:
                 region = "eu-west-2"
                 click.echo(f"No region set, default region: {region} will be used.")
-            
+
             os.chdir('../AWS')
 
             log_file_path = 'log/kubelab.log'
@@ -457,29 +457,29 @@ def destroy(param_type, name, region, yes):
 
                         if check_output:
                             node_groups = json.loads(check_output)['nodegroups']
-                            
-                            for node_group in node_groups:
-                                check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
-
-                                delete_node_group_command = f"aws eks delete-nodegroup --cluster-name {aws_cluster_name} --nodegroup-name {node_group} --region {aws_cluster_region}"
-                                print(f"Node group {node_group} is being destroyed..")
-                                subprocess.Popen(delete_node_group_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True).communicate() 
-
-                                while True:
-                                    # Run the AWS CLI command to list node groups
+                            if node_groups:
+                                for node_group in node_groups:
                                     check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
-                                    result = subprocess.run(check_command, shell=True, capture_output=True, text=True)
 
-                                    if result.returncode == 0:
-                                        # Parse the JSON output
-                                        output = json.loads(result.stdout)
+                                    delete_node_group_command = f"aws eks delete-nodegroup --cluster-name {aws_cluster_name} --nodegroup-name {node_group} --region {aws_cluster_region}"
+                                    print(f"Node group {node_group} is being destroyed..")
+                                    subprocess.Popen(delete_node_group_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True).communicate() 
 
-                                        if "nodegroups" in output and len(output["nodegroups"]) == 0:
-                                            print(f"The Node Groups of the {aws_cluster_name} cluster have been destroyed.")
-                                            break
+                                    while True:
+                                        # Run the AWS CLI command to list node groups
+                                        check_command = f"aws eks list-nodegroups --cluster-name {aws_cluster_name} --region {aws_cluster_region}"
+                                        result = subprocess.run(check_command, shell=True, capture_output=True, text=True)
 
-                                    else:
-                                        print("An error occurred while executing the command.")
+                                        if result.returncode == 0:
+                                            # Parse the JSON output
+                                            output = json.loads(result.stdout)
+
+                                            if "nodegroups" in output and len(output["nodegroups"]) == 0:
+                                                print(f"The Node Groups of the {aws_cluster_name} cluster have been destroyed.")
+                                                break
+
+                                        else:
+                                            print("An error occurred while executing the command.")
                         delete_command = f"aws eks delete-cluster --name {aws_cluster_name} --region {aws_cluster_region}"
                         print(f"The EKS cluster {aws_cluster_name} in region {aws_cluster_region} is being destroyed..")
                         subprocess.check_call(delete_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True)
@@ -651,7 +651,7 @@ def destroy(param_type, name, region, yes):
 @cli.command()
 @click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-@click.option('--version', type=click.STRING, default='1.5.0', help="Operator version", required=False)
+@click.option('--version', type=click.STRING, help="product version", required=False)
 def add(type, product, version):
     product_cat = dict()
     installed_type = dict()
@@ -659,7 +659,7 @@ def add(type, product, version):
     operatorRepo = dict()
     operatorDir = dict()
     operatorImage = dict()
-    imageVersion = dict()
+    imageVersion = dict()  # TODO this shouldn't be here, use default version instead
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -912,7 +912,7 @@ def use(type, cluster, provider, region, resource_group, project):
                 if not data:
                     data = []
             except yaml.YAMLError as e:
-                print("Error loading cluster.yaml:", str(e)
+                print("Error loading cluster.yaml:", str(e))
                 return
     else:
         data = []
