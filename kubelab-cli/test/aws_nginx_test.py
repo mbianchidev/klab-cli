@@ -45,7 +45,7 @@ class TestAWSNginx:
             deployment = api.read_namespaced_deployment(deployment_name, namespace)
         except client.ApiException as e:
             assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
-        
+
         print("Deployment found: ", deployment)
         api_core = client.CoreV1Api()
 
