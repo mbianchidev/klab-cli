@@ -572,12 +572,13 @@ def destroy(param_type, name, region, yes):
                 elif cluster_provider == "GCP":
                     gcp_cluster_name = cluster.get('cluster_name')
                     gcp_cluster_region = cluster.get('cluster_region')
+                    gcp_cluster_project = cluster.get('cluster_project')
 
                     # Check if the cluster exists in the cluster credentials
-                    matching_cluster = next((c for c in data if c.get('cluster_name') == gcp_cluster_name and c.get('cluster_region') == gcp_cluster_region), None)
+                    matching_cluster = next((c for c in data if c.get('cluster_name') == gcp_cluster_name and c.get('cluster_region') == gcp_cluster_region and c.get('cluster_project') == gcp_cluster_project), None)
 
                     if matching_cluster:
-                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} exists.")
+                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} and project {gcp_cluster_project} exists.")
                         if yes:
                             confirmation = 'yes'
                         else:
@@ -603,6 +604,7 @@ def destroy(param_type, name, region, yes):
                                         continue  # Cluster not found in this zone, move on to the next zone
 
                                     # Cluster found in this zone, delete it
+                                    print('Deleting the cluster that has been found.')
                                     delete_command = f"gcloud container clusters delete {gcp_cluster_name} --zone {zone} --quiet"
                                     subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
                                     cluster_deleted = True
@@ -620,7 +622,7 @@ def destroy(param_type, name, region, yes):
                                     destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                 if destroy_all == 'yes':
                                     os.chdir('../GCP')
-                                    process = subprocess.Popen('terraform destroy -auto-approve', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
+                                    process = subprocess.Popen(f'terraform destroy -auto-approve -var="project={gcp_cluster_project}"', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
                                     print("The rest of the resources are being destroyed...")
                                     exit_code = process.wait()
                                     if exit_code == 0:
