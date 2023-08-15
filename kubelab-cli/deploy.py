@@ -5,7 +5,7 @@ import re
 
 
 class Deploy:
-    def __init__(self, productName, installed_type=None, imageVersion=None, deployment_type=None, operatorImage=None, operatorRepo=None, op_version=None, operatorDir=None):
+    def __init__(self, productName, op_version, installed_type=None, imageVersion=None, deployment_type=None, operatorImage=None, operatorRepo=None, operatorDir=None):
         # Constructor code here
         self.op_version = op_version
         self.deployment_type = deployment_type
