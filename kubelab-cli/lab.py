@@ -656,6 +656,7 @@ def add(type, product, version):
     operatorDir = dict()
     operatorImage = dict()
     imageVersion = dict()  # TODO this shouldn't be here, use default version instead
+    operatorVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -674,19 +675,21 @@ def add(type, product, version):
                 operatorImage['operatorImage'] = line.split(': ')[1].strip()
             elif line.startswith('imageVersion'):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorVersion'):
+                operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
     if installed_type['installed_type'] == "deployment":
-        deploy = Deploy(productName=product)
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product)
         deploy.switch_operator(productName=product)
         type = 'operator'
     if installed_type['installed_type'] == "operator":
         type = 'deployment'
-        deploy = Deploy(op_version=version, productName=product, operatorDir=operatorDir['operatorDir'])
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product, operatorDir=operatorDir['operatorDir'])
         deploy.switch_deployment(productName=product)
     elif type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=operatorVersion['operatorVersion'])
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
@@ -741,7 +744,7 @@ def update(type, product, version):
         if installed_type is None and installed_version is None:
             print("Deployment is not installed")
         print(f"Updating the deployment to version: {version}")
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=version)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
         print(f"Deployment is updated to {imageVersion['imageVersion']}")
@@ -794,7 +797,7 @@ def delete(type, product):
                 'installed_version': '',
                 'installed_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
-                'operatorVersion': 'None',
+                'operatorVersion': '1.5.0',
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile'],
@@ -832,7 +835,7 @@ def delete(type, product):
                 'installed_version': '',
                 'installed_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
-                'operatorVersion': 'None',
+                'operatorVersion': '1.5.0',
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile'],
