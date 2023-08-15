@@ -7,6 +7,6 @@ if __name__ == '__main__':
     test_instance.test_gcp_use_cluster()
     test_instance.test_gcp_install_nginx_deployment()
     test_instance.test_gcp_update_nginx_deployment()
-    # test_instance.test_gcp_switch_nginx_deployment()
+    test_instance.test_gcp_switch_nginx_deployment()
     test_instance.test_gcp_delete_operator()
     test_instance.test_gcp_destroy_cluster()
