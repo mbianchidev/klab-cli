@@ -149,9 +149,8 @@ class Deploy:
                 print("Staying in deployment")
                 exit()
 
-    def switch_deployment(self, productName):
-        answer = input(f"{productName} is already installed, do you want to switch from the current installation (operator - {self.op_version}) to an deployment based one? (Y/N): ")
-        if answer == 'y':
+    def switch_deployment(self, productName, autoApprove):
+        if autoApprove.lower() == 'yes':
             print("Deleting operator and switching to deployment \n")     
             repo_dir = self.operatorDir
             os.chdir(repo_dir)
@@ -163,6 +162,20 @@ class Deploy:
             else:
                 print("Deployment failed")
             os.chdir('../../../')
-        elif answer == 'n':
-            print("Keeping the deployment installed.")
-            exit()
+        else:
+            answer = input(f"{productName} is already installed, do you want to switch from the current installation (operator - {self.op_version}) to an deployment based one? (Y/N): ")
+            if answer.lower() == 'yes':
+                print("Deleting operator and switching to deployment \n")     
+                repo_dir = self.operatorDir
+                os.chdir(repo_dir)
+                # Delete the deployed operator
+                process = subprocess.Popen(['make', 'undeploy'], stdout=subprocess.PIPE, universal_newlines=True)
+                exit_code = process.wait()
+                if exit_code == 0:
+                    print(f"Successfully deleted {productName} operator {self.op_version} version\n")
+                else:
+                    print("Deployment failed")
+                os.chdir('../../../')
+            elif answer.lower() == 'no':
+                print("Keeping the deployment installed.")
+                exit()

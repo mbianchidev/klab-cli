@@ -679,17 +679,20 @@ def add(type, product, version, yes):
             elif line.startswith('operatorVersion'):
                 operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
     if installed_type['installed_type'] == "deployment":
+        type = 'operator'
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product)
         if yes:
             deploy.switch_operator(productName=product, autoApprove='yes')
         else:
             deploy.switch_operator(productName=product, autoApprove='no')
-        type = 'operator'
     if installed_type['installed_type'] == "operator":
         type = 'deployment'
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product, operatorDir=operatorDir['operatorDir'])
-        deploy.switch_deployment(productName=product)
-    elif type == 'operator' and product == 'nginx':
+        if yes:
+            deploy.switch_deployment(productName=product, autoApprove='yes')
+        else:
+            deploy.switch_deployment(productName=product, autoApprove='no')
+    if type == 'operator' and product == 'nginx':
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
