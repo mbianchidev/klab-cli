@@ -5,7 +5,7 @@ import re
 
 
 class Deploy:
-    def __init__(self, productName, installed_type=None, imageVersion=None, deployment_type=None, operatorImage=None, operatorRepo=None, op_version=None, operatorDir=None):
+    def __init__(self, productName, op_version, installed_type=None, imageVersion=None, deployment_type=None, operatorImage=None, operatorRepo=None, operatorDir=None):
         # Constructor code here
         self.op_version = op_version
         self.deployment_type = deployment_type
@@ -120,22 +120,34 @@ class Deploy:
                 file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
         pass
 
-    def switch_operator(self, productName):
-        answer = input(f"{productName} is already installed, do you want to switch from the current installation (deployment - latest) to an operator based one? (Y/N): ")
-        if answer == 'y':
+    def switch_operator(self, productName, autoApprove):
+        if autoApprove.lower() == 'yes':
             print("Deleting the deployment and switching to operator \n")
             deploy_repo = "catalog/nginx/nginx_deployment"
             os.chdir(deploy_repo)
-            process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True )
+            process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True)
             exit_code = process.wait()
             if exit_code == 0:
                 print(f"Successfully deleted {productName} deployment \n")
             else:
                 print("Deployment failed")
             os.chdir('../../..')
-        elif answer == 'n':
-            print("Staying in deployment")
-            exit()
+        else:
+            answer = input(f"{productName} is already installed, do you want to switch from the current installation (deployment - latest) to an operator based one? (Y/N): ")
+            if answer.lower() == 'yes':
+                print("Deleting the deployment and switching to operator \n")
+                deploy_repo = "catalog/nginx/nginx_deployment"
+                os.chdir(deploy_repo)
+                process = subprocess.Popen(['kubectl', 'delete', '-f', 'deployment.yaml'], stdout=subprocess.PIPE, universal_newlines=True)
+                exit_code = process.wait()
+                if exit_code == 0:
+                    print(f"Successfully deleted {productName} deployment \n")
+                else:
+                    print("Deployment failed")
+                os.chdir('../../..')
+            elif answer.lower() == 'no':
+                print("Staying in deployment")
+                exit()
 
     def switch_deployment(self, productName):
         answer = input(f"{productName} is already installed, do you want to switch from the current installation (operator - {self.op_version}) to an deployment based one? (Y/N): ")
