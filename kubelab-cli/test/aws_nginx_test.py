@@ -32,7 +32,7 @@ class TestAWSNginx:
     def test_aws_install_nginx_deployment(self):
         print("Running test for add command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        result = subprocess.run(['python3', 'lab.py', 'add', 'nginx', '--version=1.24.0'], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'lab.py', 'add', 'nginx', '--version=1.24.0', '--yes'], capture_output=True, text=True)
         time.sleep(90)
         print("AWS add command result:", result.stdout)
         config.load_kube_config()
@@ -46,7 +46,6 @@ class TestAWSNginx:
         except client.ApiException as e:
             assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
 
-        print("Deployment found: ", deployment)
         api_core = client.CoreV1Api()
 
         nginx_service_name = "nginx"
@@ -82,7 +81,6 @@ class TestAWSNginx:
         except client.ApiException as e:
             assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
 
-        print("Deployment found: ", deployment)
         api_core = client.CoreV1Api()
 
         nginx_service_name = "nginx"
@@ -106,10 +104,10 @@ class TestAWSNginx:
     def test_aws_switch_nginx_deployment(self):
         print("Running test for switch to operator command in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        subprocess.run(['python3', 'lab.py', 'add', 'nginx'])
+        subprocess.run(['python3', 'lab.py', 'add', 'nginx', '--yes'])
         time.sleep(10)
         subprocess.run(['kubectl', 'apply', '-f', 'catalog/nginx/nginx_operator_test/nginx-ingress.yaml'])
-        time.sleep(90)
+        time.sleep(150)
         config.load_kube_config()
 
         # Create Kubernetes API client
@@ -121,10 +119,10 @@ class TestAWSNginx:
         except client.ApiException as e:
             assert False, f"NGINX deployment '{deployment_name}' not found in namespace '{namespace}'"
 
-        print("Deployment found: ", deployment)
         api_core = client.CoreV1Api()
 
-        nginx_service_name = "nginx"
+        nginx_service_name = "nginxingress-sample-nginx-ingress-controller"
+
         try:
             service = api_core.read_namespaced_service(nginx_service_name, namespace)
         except client.ApiException as e:
@@ -140,15 +138,22 @@ class TestAWSNginx:
         except requests.exceptions.RequestException as e:
             assert False, f"Error making request to NGINX: {e}"
         time.sleep(10)
+    
+    def test_aws_delete_deployment(self):
+        print("Running test for delete the nginx deployment in AWS")
+        os.chdir(os.path.join(os.path.dirname(__file__), '..'))
+        result = subprocess.run(['python3', 'lab.py', 'delete', 'nginx', '--type=deployment'], capture_output=True, text=True)
+        time.sleep(90)
+        assert result.returncode == 0
+        print("Successfully deleted the nginx deployment")
 
     def test_aws_delete_operator(self):
-        print("Running test for delete the operator in AWS")
+        print("Running test for delete the nginx operator in AWS")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
         result = subprocess.run(['python3', 'lab.py', 'delete', 'nginx', '--type=operator'], capture_output=True, text=True)
-        print("AWS delete operator result:", result.stdout)
-        time.sleep(5)
+        time.sleep(90)
         assert result.returncode == 0
-        print("Successfully deleted the operator")
+        print("Successfully deleted the nginx operator")
 
     def test_aws_destroy_cluster(self):
         print("Running destroy cluster in AWS")

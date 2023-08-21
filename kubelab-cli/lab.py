@@ -648,7 +648,8 @@ def destroy(param_type, name, region, yes):
 @click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, help="product version", required=False)
-def add(type, product, version):
+@click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed.')
+def add(type, product, version, yes):
     product_cat = dict()
     installed_type = dict()
     deploymentFile = dict()
@@ -678,14 +679,20 @@ def add(type, product, version):
             elif line.startswith('operatorVersion'):
                 operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
     if installed_type['installed_type'] == "deployment":
-        deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product)
-        deploy.switch_operator(productName=product)
         type = 'operator'
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product)
+        if yes:
+            deploy.switch_operator(productName=product, autoApprove='yes')
+        else:
+            deploy.switch_operator(productName=product, autoApprove='no')
     if installed_type['installed_type'] == "operator":
         type = 'deployment'
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product, operatorDir=operatorDir['operatorDir'])
-        deploy.switch_deployment(productName=product)
-    elif type == 'operator' and product == 'nginx':
+        if yes:
+            deploy.switch_deployment(productName=product, autoApprove='yes')
+        else:
+            deploy.switch_deployment(productName=product, autoApprove='no')
+    if type == 'operator' and product == 'nginx':
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
@@ -959,7 +966,7 @@ def use(type, cluster, provider, region, resource_group, project):
     if provider == 'AWS':
         update_kubeconfig_cmd = ["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster]
     elif provider == 'Azure':
-        update_kubeconfig_cmd = ["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster]
+        update_kubeconfig_cmd = ["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster, "--overwrite-existing"]
     elif provider == 'GCP':
         update_kubeconfig_cmd = ["gcloud", "container", "clusters", "get-credentials", cluster, "--project", project, "--region", region]
 

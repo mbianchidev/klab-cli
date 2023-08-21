@@ -32,7 +32,7 @@ class TestGCPNginx:
     def test_gcp_install_nginx_deployment(self):
         print("Running test for add command in GCP")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        result = subprocess.run(['python3', 'lab.py', 'add', 'nginx', '--version=1.24.0'], capture_output=True, text=True)
+        result = subprocess.run(['python3', 'lab.py', 'add', 'nginx', '--version=1.24.0', '--yes'], capture_output=True, text=True)
         time.sleep(150)
         print("GCP add command result:", result.stdout)
         config.load_kube_config()
@@ -111,7 +111,7 @@ class TestGCPNginx:
     def test_gcp_switch_nginx_deployment(self):
         print("Running test for switch to operator command in GCP")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
-        subprocess.run(['python3', 'lab.py', 'add', 'nginx'])
+        subprocess.run(['python3', 'lab.py', 'add', 'nginx', '--yes'])
         time.sleep(10)
         subprocess.run(['kubectl', 'apply', '-f', 'catalog/nginx/nginx_operator_test/nginx-ingress.yaml'])
         time.sleep(120)
