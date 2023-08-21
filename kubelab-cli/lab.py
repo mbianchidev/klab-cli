@@ -22,6 +22,11 @@ def log_message(log_file, message):
 
 @cli.command()
 def init():
+    """
+    Initializes the credentials needed for the supported cloud providers and Terraform.
+    It saves the credentials in the 'credentials' directory and the logs in the 'logs' directory.
+    Usage: lab init
+    """
     script_dir = os.path.dirname(os.path.realpath(__file__))
     credentials_dir = os.path.join(script_dir, 'credentials')
     os.makedirs(credentials_dir, exist_ok=True)
@@ -128,9 +133,9 @@ def init():
         log_message(gcp_logs_file, "gcloud CLI is not installed or configured.")
 
 
-def log(command, log_file_path, wait_for_completion=True):
+def wait_for_exe(command, log_file_path, wait_for_completion=True):
     """
-    Run a command and optionally wait for its completion.
+    Runs a command and waits for its completion.
 
     :param command: The command to execute.
     :param log_file_path: The path to the log file to store the command output.
@@ -192,14 +197,14 @@ def create(type, cluster_name, provider, region, resource_group, project):
             create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
-            log(
+            wait_for_exe(
                 f'terraform plan -var="cluster_name={cluster_name}" -var="region={region}"',
                 log_file_path
             )
 
             click.echo("Terraform plan was completed successfully!")
 
-            log(
+            wait_for_exe(
                 f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}"',
                 log_file_path,
                 wait_for_completion=False
@@ -227,14 +232,14 @@ def create(type, cluster_name, provider, region, resource_group, project):
             create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
-            log(
+            wait_for_exe(
                 f'terraform plan -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}"',
                 log_file_path
             )
 
             click.echo("Terraform plan was completed successfully!")
 
-            log(
+            wait_for_exe(
                 f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}"',
                 log_file_path,
                 wait_for_completion=False
@@ -263,7 +268,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
             create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
-            log(
+            wait_for_exe(
                 f'terraform plan -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}"',
                 log_file_path
             )
@@ -273,7 +278,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
 
             click.echo("Terraform plan was completed successfully!")
 
-            log(
+            wait_for_exe(
                 f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}"',
                 log_file_path,
                 wait_for_completion=False
