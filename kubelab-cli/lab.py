@@ -50,7 +50,7 @@ def init():
                 aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
                 log_message(aws_logs_file, "AWS credentials saved.")
                 print("Initializing Terraform for AWS...\n")
-                os.chdir('../AWS')
+                os.chdir('../providers/AWS')
                 process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
                 stderr_output = process.communicate()
                 exit_code = process.wait()
@@ -87,7 +87,7 @@ def init():
             azure_logs_file = os.path.join(logs_dir, 'azure_terraform_init.log')
             log_message(azure_logs_file, "Azure credentials saved.")
             print("Initializing Terraform for Azure...")
-            os.chdir('../Azure')
+            os.chdir('../providers/Azure')
             process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
             stdout_output, stderr_output = process.communicate()
             exit_code = process.wait()
@@ -112,7 +112,7 @@ def init():
         gcp_logs_file = os.path.join(logs_dir, 'gcp_terraform_init.log')
         log_message(gcp_logs_file, "Gcloud credentials saved.")
         print("Initializing Terraform for Google Cloud...")
-        os.chdir('../GCP')
+        os.chdir('../providers/GCP')
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stderr_output = process.communicate()
         exit_code = process.wait()
@@ -186,7 +186,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 region = "eu-west-2"
                 click.echo(f"No region set, default region: {region} will be used.")
 
-            os.chdir('../AWS')
+            os.chdir('../providers/AWS')
 
             log_file_path = 'log/kubelab.log'
 
@@ -221,7 +221,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 region = "eastus"
                 click.echo(f"No region set, default region: {region} will be used.")
 
-            os.chdir('../Azure')
+            os.chdir('../providers/Azure')
 
             log_file_path = 'log/kubelab.log'
 
@@ -257,7 +257,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 click.echo("Make sure to add --project <project-id> or -p <project-id> option.")
                 return
 
-            os.chdir('../GCP')
+            os.chdir('../providers/GCP')
 
             log_file_path = 'log/kubelab.log'
 
@@ -497,7 +497,7 @@ def destroy(param_type, name, region, yes):
                         else:
                             destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                         if destroy_all == 'yes':
-                            os.chdir('../AWS')
+                            os.chdir('../providers/AWS')
                             destroy_all_command = f'terraform destroy -auto-approve -var="cluster_name={aws_cluster_name}" -var="region={aws_cluster_region}"'
                             process = subprocess.Popen(destroy_all_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True, universal_newlines=True)
                             print("The rest of the resources are being destroyed... ")
@@ -544,7 +544,7 @@ def destroy(param_type, name, region, yes):
                                     else:
                                         destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                     if destroy_all == 'yes' or yes:
-                                        os.chdir('../Azure')
+                                        os.chdir('../providers/Azure')
                                         process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={azure_cluster_name}" -var="location={azure_cluster_region}" -var="resource_group={azure_resource_group}" ', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
                                         print("The rest of the resources are being destroyed... ")
                                         exit_code = process.wait()
@@ -621,7 +621,7 @@ def destroy(param_type, name, region, yes):
                                 else:
                                     destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                 if destroy_all == 'yes':
-                                    os.chdir('../GCP')
+                                    os.chdir('../providers/GCP')
                                     process = subprocess.Popen(f'terraform destroy -auto-approve -var="project={gcp_cluster_project}"', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
                                     print("The rest of the resources are being destroyed...")
                                     exit_code = process.wait()
@@ -705,10 +705,11 @@ def add(type, product, version, yes):
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def update(type, product, version):
-    if type == 'operator' and product == 'nginx':
-        print(f'Upadating NGINX with latest version ({version})')
-        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
+    if type == 'operator':
+        print(f'Upadating {product} with latest version ({version})')
+        repo_dir = f'catalog/{product}/operator'
         if not os.path.exists(repo_dir):
+            # FIXME get operator repo from catalog and use Deploy object
             subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
                             '--branch', f'v{version}'])
         os.chdir(repo_dir)
@@ -719,7 +720,8 @@ def update(type, product, version):
         subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
 
         print(f'Nginx operator updated successfully with {version} version')
-    elif type == 'deployment' and product == 'nginx':
+    elif type == 'deployment':
+        # FIXME delete all of this and just use the catalog + new image version on Deploy
         product_cat = dict()
         installed_type = dict()
         deploymentFile = dict()
@@ -764,40 +766,39 @@ def update(type, product, version):
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 def delete(type, product):
-    product_cat = dict()
     installed_type = dict()
-    deploymentFile = dict()
     operatorRepo = dict()
-    operatorDir = dict()
+    operatorVersion = dict()
     operatorImage = dict()
+    operatorDir = dict()
+    deploymentFile = dict()
     imageVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
             line = line.strip()
-            if line.startswith('- product'):
-                product_cat['product'] = line.split(':')[1].strip()
-            elif line.startswith('installed_type'):
+            if line.startswith('installed_type'):
                 installed_type['installed_type'] = line.split(':')[1].strip()
-            elif line.startswith('deploymentFile'):
-                deploymentFile['deploymentFile'] = line.split(':')[1].strip()
-            elif line.startswith('operatorDir'):
-                operatorDir['operatorDir'] = line.split(':')[1].strip()
             elif line.startswith('operatorRepo'):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorVersion'):
+                operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
             elif line.startswith('operatorImage'):
                 operatorImage['operatorImage'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorDir'):
+                operatorDir['operatorDir'] = line.split(':')[1].strip()
+            elif line.startswith('deploymentFile'):
+                deploymentFile['deploymentFile'] = line.split(':')[1].strip()
             elif line.startswith('imageVersion'):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
-    if type == 'operator' and product == 'nginx':
-        print(f'Deleting NGINX with {imageVersion["imageVersion"]} version')
-        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
-        os.chdir(repo_dir)
+    if type == 'operator':
+        print(f'Deleting {product} with {imageVersion["imageVersion"]} version')
+        os.chdir(operatorDir['operatorDir'])
         # Delete the deployed operator
         subprocess.run(['make', 'undeploy'])
         data = [
             {
-                'product': 'nginx',
+                'product': f'{product}',
                 'default_version': 'latest',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
@@ -811,7 +812,7 @@ def delete(type, product):
                 'imageVersion': imageVersion['imageVersion']
             },
         ]
-        with open('../../catalog.yaml', 'w') as file:
+        with open('catalog/catalog.yaml', 'w') as file:
             for item in data:
                 file.write("- product: {}\n".format(item['product']))
                 file.write("  default_version: {}\n".format(item['default_version']))
@@ -827,29 +828,29 @@ def delete(type, product):
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
                 file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
-        print(f'Nginx operator deleted successfully with {imageVersion["imageVersion"]} version')
-    elif type == 'deployment' and product == 'nginx':
-        print("Deleting nginx deployment with latest image version")
-        deploy_repo = "catalog/nginx/nginx_deployment"
-        os.chdir(deploy_repo)
-        subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
+        print(f'{product} operator deleted successfully with {imageVersion["imageVersion"]} version')
+    elif type == 'deployment':
+        deploy_file = deploymentFile['deploymentFile']
+        deploy_version = imageVersion['imageVersion']
+        print(f"Deleting {product} deployment with {deploy_version} image version")
+        subprocess.run(['kubectl', 'delete', '-f', f'{deploy_file}'])
         data = [
             {
-                'product': 'nginx',
-                'default_version': 'latest',
+                'product': f'{product}',
+                'default_version': f'{imageVersion}',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
                 'installed_version': '',
                 'installed_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
-                'operatorVersion': '1.5.0',
+                'operatorVersion': operatorVersion['operatorVersion'],
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile'],
                 'imageVersion': imageVersion['imageVersion']
             },
         ]
-        with open('../../catalog.yaml', 'w') as file:
+        with open('catalog/catalog.yaml', 'w') as file:
             for item in data:
                 file.write("- product: {}\n".format(item['product']))
                 file.write("  default_version: {}\n".format(item['default_version']))
