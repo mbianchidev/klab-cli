@@ -14,6 +14,11 @@ from datetime import datetime
 def cli():
     pass
 
+def log_message(log_file, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"[{timestamp}] {message}\n"
+    with open(log_file, 'a') as log_file:
+        log_file.write(log_entry)
 
 @cli.command()
 def init():
@@ -24,12 +29,6 @@ def init():
     # Create logs directory
     logs_dir = os.path.join(script_dir, 'logs')
     os.makedirs(logs_dir, exist_ok=True)
-
-    def log_message(log_file, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] {message}\n"
-        with open(log_file, 'a') as log_file:
-            log_file.write(log_entry)
 
     # AWS
     aws_credentials_file = os.path.expanduser('~/.aws/credentials')
