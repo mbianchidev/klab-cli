@@ -572,12 +572,13 @@ def destroy(param_type, name, region, yes):
                 elif cluster_provider == "GCP":
                     gcp_cluster_name = cluster.get('cluster_name')
                     gcp_cluster_region = cluster.get('cluster_region')
+                    gcp_cluster_project = cluster.get('cluster_project')
 
                     # Check if the cluster exists in the cluster credentials
-                    matching_cluster = next((c for c in data if c.get('cluster_name') == gcp_cluster_name and c.get('cluster_region') == gcp_cluster_region), None)
+                    matching_cluster = next((c for c in data if c.get('cluster_name') == gcp_cluster_name and c.get('cluster_region') == gcp_cluster_region and c.get('cluster_project') == gcp_cluster_project), None)
 
                     if matching_cluster:
-                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} exists.")
+                        print(f"The GKE cluster named {gcp_cluster_name} in region {gcp_cluster_region} and project {gcp_cluster_project} exists.")
                         if yes:
                             confirmation = 'yes'
                         else:
@@ -603,6 +604,7 @@ def destroy(param_type, name, region, yes):
                                         continue  # Cluster not found in this zone, move on to the next zone
 
                                     # Cluster found in this zone, delete it
+                                    print('Deleting the cluster that has been found.')
                                     delete_command = f"gcloud container clusters delete {gcp_cluster_name} --zone {zone} --quiet"
                                     subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
                                     cluster_deleted = True
@@ -620,7 +622,7 @@ def destroy(param_type, name, region, yes):
                                     destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                 if destroy_all == 'yes':
                                     os.chdir('../GCP')
-                                    process = subprocess.Popen('terraform destroy -auto-approve', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
+                                    process = subprocess.Popen(f'terraform destroy -auto-approve -var="project={gcp_cluster_project}"', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
                                     print("The rest of the resources are being destroyed...")
                                     exit_code = process.wait()
                                     if exit_code == 0:
@@ -646,7 +648,8 @@ def destroy(param_type, name, region, yes):
 @click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, help="product version", required=False)
-def add(type, product, version):
+@click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed.')
+def add(type, product, version, yes):
     product_cat = dict()
     installed_type = dict()
     deploymentFile = dict()
@@ -654,6 +657,7 @@ def add(type, product, version):
     operatorDir = dict()
     operatorImage = dict()
     imageVersion = dict()  # TODO this shouldn't be here, use default version instead
+    operatorVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
@@ -672,19 +676,27 @@ def add(type, product, version):
                 operatorImage['operatorImage'] = line.split(': ')[1].strip()
             elif line.startswith('imageVersion'):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorVersion'):
+                operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
     if installed_type['installed_type'] == "deployment":
-        deploy = Deploy(productName=product)
-        deploy.switch_operator(productName=product)
         type = 'operator'
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product)
+        if yes:
+            deploy.switch_operator(productName=product, autoApprove='yes')
+        else:
+            deploy.switch_operator(productName=product, autoApprove='no')
     if installed_type['installed_type'] == "operator":
         type = 'deployment'
-        deploy = Deploy(op_version=version, productName=product, operatorDir=operatorDir['operatorDir'])
-        deploy.switch_deployment(productName=product)
-    elif type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=version, deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product, operatorDir=operatorDir['operatorDir'])
+        if yes:
+            deploy.switch_deployment(productName=product, autoApprove='yes')
+        else:
+            deploy.switch_deployment(productName=product, autoApprove='no')
+    if type == 'operator' and product == 'nginx':
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=operatorVersion['operatorVersion'])
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
@@ -739,7 +751,7 @@ def update(type, product, version):
         if installed_type is None and installed_version is None:
             print("Deployment is not installed")
         print(f"Updating the deployment to version: {version}")
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=version)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
         print(f"Deployment is updated to {imageVersion['imageVersion']}")
@@ -792,7 +804,7 @@ def delete(type, product):
                 'installed_version': '',
                 'installed_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
-                'operatorVersion': 'None',
+                'operatorVersion': '1.5.0',
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile'],
@@ -830,7 +842,7 @@ def delete(type, product):
                 'installed_version': '',
                 'installed_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
-                'operatorVersion': 'None',
+                'operatorVersion': '1.5.0',
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile'],
@@ -954,7 +966,7 @@ def use(type, cluster, provider, region, resource_group, project):
     if provider == 'AWS':
         update_kubeconfig_cmd = ["aws", "eks", "update-kubeconfig", "--region", region, "--name", cluster]
     elif provider == 'Azure':
-        update_kubeconfig_cmd = ["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster]
+        update_kubeconfig_cmd = ["az", "aks", "get-credentials", "--resource-group", resource_group, "--name", cluster, "--overwrite-existing"]
     elif provider == 'GCP':
         update_kubeconfig_cmd = ["gcloud", "container", "clusters", "get-credentials", cluster, "--project", project, "--region", region]
 

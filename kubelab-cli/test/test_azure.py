@@ -8,5 +8,6 @@ if __name__ == '__main__':
     test_instance.test_azure_install_nginx_deployment()
     test_instance.test_azure_update_nginx_deployment()
     test_instance.test_azure_switch_nginx_deployment()
+    test_instance.test_azure_delete_deployment()
     test_instance.test_azure_delete_operator()
     test_instance.test_azure_destroy_cluster()
