@@ -175,6 +175,16 @@ def create_log_directory_and_file(log_file_path):
 @click.option('--resource-group', '-rg', type=str, help='Resource group name (required for Azure)', metavar='<resource_group>')
 @click.option('--project', '-p', type=str, help='GCP project ID (required for GCP)', metavar='<project_id>')
 def create(type, cluster_name, provider, region, resource_group, project):
+    """
+    Creates a k8s cluster in the specified cloud provider.
+
+    :param type: TODO
+    :param cluster_name: TODO
+    :param provider: TODO
+    :param region: TODO
+    :param resource_group: TODO
+    :param project: TODO
+    """
     if type != 'cluster':
         click.echo("Invalid type specified. Only 'cluster' is supported.")
         return
@@ -360,6 +370,13 @@ def create(type, cluster_name, provider, region, resource_group, project):
 @click.option('--provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
 @click.option('--name', help='Filter clusters by name pattern')
 def list(type, provider, name):
+    """
+    Lists k8s clusters connected in the specified cloud provider.
+
+    :param type: TODO
+    :param provider: TODO
+    :param name: TODO
+    """
     if type == 'cluster':
         credentials_dir = 'cluster_credentials'
         yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
@@ -408,6 +425,14 @@ def list(type, provider, name):
 @click.option('--region', type=click.STRING, help='Where is the cluster located?')
 @click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed with destruction.')
 def destroy(param_type, name, region, yes):
+    """
+    Destroys a k8s cluster in the specified cloud provider.
+
+    :param param_type: TODO
+    :param name: TODO
+    :param region: TODO
+    :param yes: TODO
+    """
     if param_type == "cluster":
         if name is None and region is None:
             print("Please provide both the cluster name and region.")
@@ -654,6 +679,14 @@ def destroy(param_type, name, region, yes):
 @click.option('--version', type=click.STRING, help="product version", required=False)
 @click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed.')
 def add(type, product, version, yes):
+    """
+    Adds a product in the current cluster.
+
+    :param type: TODO
+    :param product: TODO
+    :param version: TODO
+    :param yes: TODO
+    """
     product_cat = dict()
     installed_type = dict()
     deploymentFile = dict()
@@ -709,6 +742,13 @@ def add(type, product, version, yes):
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def update(type, product, version):
+    """
+    Updates a product in the current cluster.
+
+    :param type: TODO
+    :param product: TODO
+    :param version: TODO
+    """
     if type == 'operator':
         print(f'Upadating {product} with latest version ({version})')
         repo_dir = f'catalog/{product}/operator'
@@ -770,6 +810,12 @@ def update(type, product, version):
 @click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 def delete(type, product):
+    """
+    Deletes a product in the current cluster.
+
+    :param type: TODO
+    :param product: TODO
+    """
     installed_type = dict()
     operatorRepo = dict()
     operatorVersion = dict()
@@ -882,6 +928,17 @@ def delete(type, product):
 @click.option('--resource-group', '-rg', type=click.STRING, default=None, help='Resource group of the cluster (Azure)')
 @click.option('--project', '-p', type=click.STRING, default=None, help='GCP project of the cluster (GCP)')
 def use(type, cluster, provider, region, resource_group, project):
+    """
+    Select a cluster to switch to.
+
+    :param type: TODO
+    :param cluster: TODO
+    :param provider: TODO
+    :param region: TODO
+    :param resource_group: TODO
+    :param project: TODO
+    """
+    # FIXME it has just to read the clusters.yaml once they connect the first time it is referred by a unique name
     if type != 'cluster':
         print("Invalid argument type. Please provide 'cluster' as the argument type.")
         return
@@ -991,7 +1048,10 @@ def use(type, cluster, provider, region, resource_group, project):
 
 @cli.command()
 def info():
-    print("Information about your cluster come from cnquery lib - thanks mondoo")
+    """
+    Query your cluster for information via an interactive shell from Mondoo.
+    """
+    print("Information about your cluster come from cnquery lib - thanks Mondoo")
     subprocess.run(['cnquery', 'shell', 'k8s'])
 
 
