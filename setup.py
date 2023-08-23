@@ -1,7 +1,7 @@
 from distutils.core import setup
 setup(
     name='kubelab-cli',
-    packages=['lab'],
+    packages=['kubelab-cli'],
     version='0.1',
     license='MIT',
     description='kubelab-cli Kubernetes made easy - handle clusters and product with simple commands!',

@@ -8,8 +8,6 @@ PyYAML==6.0
 s3transfer==0.6.1
 six==1.16.0
 urllib3==1.26.16
-build==0.10.0
-wheel==0.40.0
 setuptools==67.6.1
 flake8==6.0.0 
 mccabe==0.7.0 
@@ -18,3 +16,6 @@ pyflakes==3.0.1
 kubernetes==27.2.0
 requests==2.31.0
 pytest==7.4.0
+build==0.10.0
+wheel==0.40.0
+twine==4.0.2
