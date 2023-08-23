@@ -134,13 +134,6 @@ def init():
 
 
 def wait_for_exe(command, log_file_path, wait_for_completion=True):
-    """
-    Runs a command and waits for its completion.
-
-    :param command: The command to execute.
-    :param log_file_path: The path to the log file to store the command output.
-    :param wait_for_completion: If True, wait for the process to complete; otherwise, run it in the background.
-    """
     with open(log_file_path, 'w') as log_file:
         process = subprocess.Popen(
             command,
@@ -178,12 +171,12 @@ def create(type, cluster_name, provider, region, resource_group, project):
     """
     Creates a k8s cluster in the specified cloud provider.
 
-    :param type: TODO
-    :param cluster_name: TODO
-    :param provider: TODO
-    :param region: TODO
-    :param resource_group: TODO
-    :param project: TODO
+    :param type: the resource to be created
+    :param cluster_name: the name of the cluster to be created (otional)
+    :param provider: the cloud provider to be used
+    :param region: the region where the resource will be created
+    :param resource_group: the resource group where the resource will be created (optional)
+    :param project: the GCP project ID where the resource will be created (optional)
     """
     if type != 'cluster':
         click.echo("Invalid type specified. Only 'cluster' is supported.")
@@ -301,8 +294,6 @@ def create(type, cluster_name, provider, region, resource_group, project):
             click.echo("Make sure to add --provider <cloud-provider> or -pr <cloud-provider> option.")
             return
 
-        os.chdir('../kubelab-cli')
-
         # Create cluster_credentials directory if it doesn't exist
         credentials_dir = 'cluster_credentials'
         if not os.path.exists(credentials_dir):
@@ -313,7 +304,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
 
         # Retrieve the credentials file path based on the cloud provider
         if provider == "AWS":
-            credentials_file = os.path.join('credentials', 'aws_kube_credential')
+            credentials_file = os.path.join(credentials_dir, 'aws_kube_credentials')
 
             cluster_info = {
                 'cluster_credentials': credentials_file,
@@ -322,7 +313,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 'cluster_region': region
             }
         elif provider == "Azure":
-            credentials_file = os.path.join('credentials', 'azure_kube_credential')
+            credentials_file = os.path.join(credentials_dir, 'azure_kube_credentials')
 
             cluster_info = {
                 'cluster_credentials': credentials_file,
@@ -332,7 +323,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 'cluster_resource_group': resource_group
             }
         elif provider == "GCP":
-            credentials_file = os.path.join('credentials', 'gcp_kube_credential')
+            credentials_file = os.path.join(credentials_dir, 'gcp_kube_credentials')
 
             cluster_info = {
                 'cluster_credentials': credentials_file,
@@ -688,7 +679,7 @@ def add(type, product, version, yes):
     :param yes: TODO
     """
     product_cat = dict()
-    installed_type = dict()
+    installation_type = dict()
     deploymentFile = dict()
     operatorRepo = dict()
     operatorDir = dict()
@@ -701,8 +692,8 @@ def add(type, product, version, yes):
             line = line.strip()
             if line.startswith('- product'):
                 product_cat['product'] = line.split(':')[1].strip()
-            elif line.startswith('installed_type'):
-                installed_type['installed_type'] = line.split(':')[1].strip()
+            elif line.startswith('installation_type'):
+                installation_type['installation_type'] = line.split(':')[1].strip()
             elif line.startswith('deploymentFile'):
                 deploymentFile['deploymentFile'] = line.split(':')[1].strip()
             elif line.startswith('operatorDir'):
@@ -715,14 +706,14 @@ def add(type, product, version, yes):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
             elif line.startswith('operatorVersion'):
                 operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
-    if installed_type['installed_type'] == "deployment":
+    if installation_type['installation_type'] == "deployment":
         type = 'operator'
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product)
         if yes:
             deploy.switch_operator(productName=product, autoApprove='yes')
         else:
             deploy.switch_operator(productName=product, autoApprove='no')
-    if installed_type['installed_type'] == "operator":
+    if installation_type['installation_type'] == "operator":
         type = 'deployment'
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product, operatorDir=operatorDir['operatorDir'])
         if yes:
@@ -730,10 +721,10 @@ def add(type, product, version, yes):
         else:
             deploy.switch_deployment(productName=product, autoApprove='no')
     if type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installation_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=operatorVersion['operatorVersion'])
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installation_type=type, op_version=operatorVersion['operatorVersion'])
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
@@ -767,7 +758,7 @@ def update(type, product, version):
     elif type == 'deployment':
         # FIXME delete all of this and just use the catalog + new image version on Deploy
         product_cat = dict()
-        installed_type = dict()
+        installation_type = dict()
         deploymentFile = dict()
         operatorRepo = dict()
         operatorDir = dict()
@@ -780,8 +771,8 @@ def update(type, product, version):
                 line = line.strip()
                 if line.startswith('- product'):
                     product_cat['product'] = line.split(':')[1].strip()
-                elif line.startswith('installed_type'):
-                    installed_type['installed_type'] = line.split(':')[1].strip()
+                elif line.startswith('installation_type'):
+                    installation_type['installation_type'] = line.split(':')[1].strip()
                 elif line.startswith('deploymentFile'):
                     deploymentFile['deploymentFile'] = line.split(':')[1].strip()
                 elif line.startswith('operatorDir'):
@@ -794,10 +785,10 @@ def update(type, product, version):
                     imageVersion['imageVersion'] = line.split(': ')[1].strip()
                 elif line.startswith('installed_version'):
                     installed_version['installed_version'] = line.split(': ')[1].strip()
-        if installed_type is None and installed_version is None:
+        if installation_type is None and installed_version is None:
             print("Deployment is not installed")
         print(f"Updating the deployment to version: {version}")
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=version)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installation_type=type, op_version=version)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
         print(f"Deployment is updated to {imageVersion['imageVersion']}")
@@ -807,16 +798,16 @@ def update(type, product, version):
 
 
 @cli.command()
-@click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
+@click.option('--type', install_type=click.Choice(['operator', 'deployment']), help='Installation type of the product')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-def delete(type, product):
+def delete(install_type, product):
     """
     Deletes a product in the current cluster.
 
-    :param type: TODO
-    :param product: TODO
+    :param install_type: the installation type of the product to be deleted
+    :param product: the product to be deleted
     """
-    installed_type = dict()
+    installation_type = dict()
     operatorRepo = dict()
     operatorVersion = dict()
     operatorImage = dict()
@@ -827,8 +818,8 @@ def delete(type, product):
         lines = f.readlines()
         for line in lines:
             line = line.strip()
-            if line.startswith('installed_type'):
-                installed_type['installed_type'] = line.split(':')[1].strip()
+            if line.startswith('installation_type'):
+                installation_type['installation_type'] = line.split(':')[1].strip()
             elif line.startswith('operatorRepo'):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
             elif line.startswith('operatorVersion'):
@@ -841,7 +832,7 @@ def delete(type, product):
                 deploymentFile['deploymentFile'] = line.split(':')[1].strip()
             elif line.startswith('imageVersion'):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
-    if type == 'operator':
+    if install_type == 'operator':
         print(f'Deleting {product} with {imageVersion["imageVersion"]} version')
         os.chdir(operatorDir['operatorDir'])
         # Delete the deployed operator
@@ -853,7 +844,7 @@ def delete(type, product):
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
                 'installed_version': '',
-                'installed_type': '',
+                'installation_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
                 'operatorVersion': '1.5.0',
                 'operatorImage': operatorImage['operatorImage'],
@@ -871,7 +862,7 @@ def delete(type, product):
                 for available_type in item['available_types']:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n".format(item['installed_type']))
+                file.write("  installation_type: {}\n".format(item['installation_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
@@ -879,7 +870,7 @@ def delete(type, product):
                 file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
                 file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
         print(f'{product} operator deleted successfully with {imageVersion["imageVersion"]} version')
-    elif type == 'deployment':
+    elif install_type == 'deployment':
         deploy_file = deploymentFile['deploymentFile']
         deploy_version = imageVersion['imageVersion']
         print(f"Deleting {product} deployment with {deploy_version} image version")
@@ -891,7 +882,7 @@ def delete(type, product):
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
                 'installed_version': '',
-                'installed_type': '',
+                'installation_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
                 'operatorVersion': operatorVersion['operatorVersion'],
                 'operatorImage': operatorImage['operatorImage'],
@@ -909,7 +900,7 @@ def delete(type, product):
                 for available_type in item['available_types']:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n".format(item['installed_type']))
+                file.write("  installation_type: {}\n".format(item['installation_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
@@ -931,12 +922,12 @@ def use(type, cluster, provider, region, resource_group, project):
     """
     Select a cluster to switch to.
 
-    :param type: TODO
-    :param cluster: TODO
-    :param provider: TODO
-    :param region: TODO
-    :param resource_group: TODO
-    :param project: TODO
+    :param type: the type of resource to switch to
+    :param cluster: the name of the cluster to switch to
+    :param provider: the cloud provider of the cluster
+    :param region: the region of the cluster (AWS and GCP)
+    :param resource_group: the resource group of the cluster (Azure)
+    :param project: the GCP project of the cluster (GCP)
     """
     # FIXME it has just to read the clusters.yaml once they connect the first time it is referred by a unique name
     if type != 'cluster':
@@ -991,7 +982,7 @@ def use(type, cluster, provider, region, resource_group, project):
         # Cluster not managed, add it to data list
         if provider == 'AWS':
             cluster_info = {
-                'cluster_credentials': "credentials/aws_kube_credential",
+                'cluster_credentials': "cluster_credentials/aws_kube_credentials",
                 'cluster_name': f"{cluster}",
                 'cluster_provider': provider.upper(),
                 'cluster_region': f"{region}",
@@ -999,7 +990,7 @@ def use(type, cluster, provider, region, resource_group, project):
             }
         elif provider == 'Azure':
             cluster_info = {
-                'cluster_credentials': "credentials/azure_kube_credential",
+                'cluster_credentials': "cluster_credentials/azure_kube_credentials",
                 'cluster_name': f"{cluster}",
                 'cluster_provider': provider.upper(),
                 'cluster_resource_group': f"{resource_group}",
@@ -1007,7 +998,7 @@ def use(type, cluster, provider, region, resource_group, project):
             }
         elif provider == 'GCP':
             cluster_info = {
-                'cluster_credentials': "credentials/gcp_kube_credential",
+                'cluster_credentials': "cluster_credentials/gcp_kube_credentials",
                 'cluster_name': f"{cluster}",
                 'cluster_provider': provider.upper(),
                 'cluster_project': f"{project}",

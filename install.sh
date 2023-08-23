@@ -115,6 +115,7 @@ if ! check_command "aws"; then
     unzip awscliv2.zip
     sudo ./aws/install
     echo "AWS CLI (should be) installed. If something goes wrong, please install it manually referring to the doc: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html"
+    source ~/.bashrc
 fi
 
 # Check and install Azure CLI
@@ -166,9 +167,8 @@ if ! check_command "az"; then
             ;;
     esac
     echo "Azure CLI (should be) installed. If something went wrong, please install it manually referring to the doc: https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux?pivots=apt"
+    source ~/.bashrc
 fi
-
-#!/bin/bash
 
 add_gpg_key_google_cloud() {
     
@@ -253,17 +253,20 @@ EOM
         *) #every other case
         case $ARCHITECTURE in
             "x64")
-                curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-439.0.0-linux-x86_64.tar.gz -o "google-cloud-sdk.tar.gz"
+                curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-444.0.0-linux-x86_64.tar.gz -o "google-cloud-sdk.tar.gz"
                 ;;
             "ARM")
-                curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-439.0.0-linux-arm.tar.gz -o "google-cloud-sdk.tar.gz"
+                curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-444.0.0-linux-arm.tar.gz -o "google-cloud-sdk.tar.gz"
                 ;;
         esac
-        tar -xf google-cloud-cli-439.0.0-linux-x86.tar.gz
-        ./google-cloud-sdk/install.sh
+        tar -xf google-cloud-cli-444.0.0-linux-x86.tar.gz
+        ./google-cloud-sdk/install.sh --quiet
         ;;
     esac
     echo "Google Cloud SDK (should be) installed. If something went wrong, please install it manually referring to the doc: https://cloud.google.com/sdk/docs/install"
+    source ~/.bashrc
+    gcloud init --skip-diagnostics --no-launch-browser 
+    # login via browser is not possible to automate
 fi
 
 # Check and install k9s

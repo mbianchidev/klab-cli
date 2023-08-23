@@ -1,6 +1,7 @@
 name: sample
 provider: aws
 region: us-east-1
+credential_file: ~/.aws/credentials
 products:
   - nginx:
       type: operator
