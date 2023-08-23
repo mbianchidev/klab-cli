@@ -150,13 +150,13 @@ output-*
 terraform.rc
 .terraform
 # Testing directories
-Testing
 nginx-ingress-helm-operator/
 
 # Credentials for Cloud Providers
-azure_kube_credential.json
-aws_kube_credential.txt
-kube_credentials.txt
+azure_kube_credentials.*
+aws_kube_credentials.*
+gcp_kube_credentials.*
+kube_credentials.*
 cluster_credentials/
 
 # State for lab CLI
