@@ -1,0 +1,45 @@
+from distutils.core import setup
+setup(
+    name='kubelab-cli',
+    packages=['lab'],
+    version='0.1',
+    license='MIT',
+    description='kubelab-cli Kubernetes made easy - handle clusters and product with simple commands!',
+    author='KubeLab team',
+    author_email='dev@kubelab.cloud',
+    url='hhttps://github.com/KubeLab-cloud/kubelab-middleware',
+    download_url='https://github.com/KubeLab-cloud/kubelab-middleware/archive/kubelab-cli-v0.1.0.tar.gz',
+    keywords=['kubernetes', 'cli', 'iac', 'k9s', 'kubectl'],
+    install_requires=[
+        'boto3',
+        'botocore',
+        'click',
+        'jmespath',
+        'MarkupSafe',
+        'python-dateuti',
+        'PyYA',
+        's3transfer',
+        'six',
+        'urllib3',
+        'build',
+        'wheel',
+        'setuptools',
+        'flake8',
+        'mccabe',
+        'pycodestyle',
+        'pyflakes',
+        'kubernetes',
+        'requests',
+        'pytest',
+    ],
+    classifiers=[
+        #   3 - Alpha
+        #   4 - Beta
+        #   5 - Production/Stable
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Dev Tools',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3.10',
+    ],
+)

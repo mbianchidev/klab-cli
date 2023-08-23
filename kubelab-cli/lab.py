@@ -342,8 +342,8 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 'cluster_project': project
             }
 
-        # Check if the cluster name, provider, and region already exist in cluster.yaml
-        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+        # Check if the cluster name, provider, and region already exist in clusters.yaml
+        yaml_file_path = os.path.join(credentials_dir, 'clusters.yaml')
         existing_clusters = []
         if os.path.exists(yaml_file_path):
             with open(yaml_file_path, 'r') as yaml_file:
@@ -353,7 +353,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
         existing_clusters_set = {(cluster['cluster_name'], cluster['cluster_provider'], cluster.get('cluster_region', '')) for cluster in existing_clusters}
 
         if (cluster_name, provider, region) in existing_clusters_set:
-            print(f"The cluster with name '{cluster_name}', provider '{provider}', and region '{region}' already exists in cluster.yaml. Skipping append.")
+            print(f"The cluster with name '{cluster_name}', provider '{provider}', and region '{region}' already exists in clusters.yaml. Skipping append.")
         else:
             existing_clusters.append(cluster_info)
             with open(yaml_file_path, 'w') as yaml_file:
@@ -379,10 +379,10 @@ def list(type, provider, name):
     """
     if type == 'cluster':
         credentials_dir = 'cluster_credentials'
-        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+        yaml_file_path = os.path.join(credentials_dir, 'clusters.yaml')
 
         if not os.path.exists(yaml_file_path):
-            click.echo("No cluster.yaml file found.")
+            click.echo("No clusters.yaml file found.")
             return
 
         with open(yaml_file_path, 'r') as yaml_file:
@@ -442,7 +442,7 @@ def destroy(param_type, name, region, yes):
             print("Please provide the cluster region.")
         else:
             # Load cluster credentials from YAML file
-            with open('cluster_credentials/cluster.yaml', 'r') as file:
+            with open('cluster_credentials/clusters.yaml', 'r') as file:
                 data = yaml.safe_load(file)
 
             # Find the matching cluster based on name and region
@@ -519,7 +519,7 @@ def destroy(param_type, name, region, yes):
                                     print("Error occurred during describe-cluster command. Please check the command and try again.")
                                     return
                         data.remove(cluster)
-                        with open('cluster_credentials/cluster.yaml', 'w') as file:
+                        with open('cluster_credentials/clusters.yaml', 'w') as file:
                             yaml.dump(data, file)
                         if yes:
                             destroy_all = 'yes'
@@ -566,7 +566,7 @@ def destroy(param_type, name, region, yes):
                                     subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
                                     print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} has been deleted successfully.")
                                     data.remove(cluster)
-                                    with open('cluster_credentials/cluster.yaml', 'w') as file:
+                                    with open('cluster_credentials/clusters.yaml', 'w') as file:
                                         yaml.dump(data, file)
                                     if yes:
                                         destroy_all = 'yes'
@@ -643,7 +643,7 @@ def destroy(param_type, name, region, yes):
                                 else:
                                     print(f"No GKE cluster named {gcp_cluster_name} found in any zone of region {gcp_cluster_region}.")
                                 data.remove(cluster)
-                                with open('cluster_credentials/cluster.yaml', 'w') as file:
+                                with open('cluster_credentials/clusters.yaml', 'w') as file:
                                     yaml.dump(data, file)
                                 if yes:
                                     destroy_all = 'yes'
@@ -971,7 +971,7 @@ def use(type, cluster, provider, region, resource_group, project):
     cluster_dir = 'cluster_credentials'
     os.makedirs(cluster_dir, exist_ok=True)
 
-    cluster_file = os.path.join(cluster_dir, 'cluster.yaml')
+    cluster_file = os.path.join(cluster_dir, 'clusters.yaml')
 
     if os.path.exists(cluster_file):
         with open(cluster_file, 'r') as file:
@@ -980,7 +980,7 @@ def use(type, cluster, provider, region, resource_group, project):
                 if not data:
                     data = []
             except yaml.YAMLError as e:
-                print("Error loading cluster.yaml:", str(e))
+                print("Error loading clusters.yaml:", str(e))
                 return
     else:
         data = []
@@ -1035,14 +1035,14 @@ def use(type, cluster, provider, region, resource_group, project):
     update_kubeconfig_process = subprocess.run(update_kubeconfig_cmd)
 
     if update_kubeconfig_process.returncode != 0:
-        print(f"Failed to connect to the {provider.upper()} cluster. The cluster.yaml file will not be modified.")
+        print(f"Failed to connect to the {provider.upper()} cluster. The clusters.yaml file will not be modified.")
         return
 
     with open(cluster_file, 'w') as file:
         try:
             yaml.safe_dump(data, file)
         except yaml.YAMLError as e:
-            print("Error saving cluster.yaml:", str(e))
+            print("Error saving clusters.yaml:", str(e))
             return
 
 
