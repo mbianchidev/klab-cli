@@ -1,3 +1,9 @@
-name: cluster sample
-description: cluster sample
-credentials: cluster-sample-credentials
+name: sample
+provider: aws
+region: us-east-1
+products:
+  - nginx:
+      type: operator
+      version: 1.0.0
+      replicas: 2
+      port: 80

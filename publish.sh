@@ -25,8 +25,8 @@ echo "Version incremented to $NEW_VERSION in $METADATA_FILE"
 
 # Define the path to the setup.py file
 SETUP_FILE="setup.py"
-# Get the current version from the setup.py file
-CURRENT_VERSION=$(grep "version=" "$SETUP_FILE" | awk -F"'" '{print $2}')
+# Get the current version from the setup.py file (warning: variable name is reused)
+CURRENT_VERSION=$(grep "version =" "$SETUP_FILE" | awk -F"'" '{print $2}')
 # Split the version string into major, minor, and patch components
 IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
 MAJOR="${VERSION_PARTS[0]}"

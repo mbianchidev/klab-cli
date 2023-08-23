@@ -2,11 +2,12 @@ from distutils.core import setup
 from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
+version = '0.1.7'
 
 setup(
     name='kubelab-cli',
     packages=['kubelab-cli'],
-    version='0.1.6',
+    version=f'{version}',
     license='MIT',
     description='kubelab-cli Kubernetes made easy - handle clusters and product with simple commands!',
     author='KubeLab team',
@@ -14,7 +15,7 @@ setup(
     long_description_content_type='text/markdown',
     author_email='dev@kubelab.cloud',
     url='https://github.com/KubeLab-cloud/kubelab-cli',
-    download_url='https://github.com/KubeLab-cloud/kubelab-cli/archive/kubelab-cli-0.1.tar.gz',
+    download_url=f'https://github.com/KubeLab-cloud/kubelab-cli/archive/kubelab-cli-{version}.tar.gz',
     keywords=['kubernetes', 'cli', 'iac', 'k9s', 'kubectl'],
     install_requires=[
         'boto3',
@@ -45,6 +46,6 @@ setup(
     #     'Development Status :: 3 - Alpha',
     #     'Intended Audience :: Developers',
     #     'License :: OSI Approved :: MIT License',
-    #     'Programming Language :: Python :: 3.10',
+    #     'Programming Language :: Python :: 3.11',
     # ],
 )
