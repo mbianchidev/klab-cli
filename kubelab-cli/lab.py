@@ -359,14 +359,14 @@ def create(type, cluster_name, provider, region, resource_group, project):
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
-@click.option('--name', help='Filter clusters by name pattern')
+@click.option('--name', help='Filter clusters by name pattern', required=False)
 def list(type, provider, name):
     """
     Lists k8s clusters connected in the specified cloud provider.
 
-    :param type: TODO
-    :param provider: TODO
-    :param name: TODO
+    :param type: the resource type to be listed
+    :param provider: the cloud provider to be used
+    :param name: the name pattern to be used for filtering (optional)
     """
     if type == 'cluster':
         credentials_dir = 'cluster_credentials'
@@ -411,20 +411,20 @@ def list(type, provider, name):
 
 
 @cli.command()
-@click.argument('param_type', type=click.Choice(['cluster']))
+@click.argument('type', type=click.Choice(['cluster']))
 @click.option('--name', type=click.STRING, help='What is the cluster named as?')
 @click.option('--region', type=click.STRING, help='Where is the cluster located?')
 @click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed with destruction.')
-def destroy(param_type, name, region, yes):
+def destroy(type, name, region, yes):
     """
-    Destroys a k8s cluster in the specified cloud provider.
+    Destroys a resource in the specified cloud provider.
 
-    :param param_type: TODO
-    :param name: TODO
-    :param region: TODO
-    :param yes: TODO
+    :param type: the resource type to be destroyed
+    :param name: the name of the resource to be destroyed
+    :param region: the region where the resource will be destroyed
+    :param yes: flag to automatically answer "yes" to all prompts and proceed with destruction
     """
-    if param_type == "cluster":
+    if type == "cluster":
         if name is None and region is None:
             print("Please provide both the cluster name and region.")
         elif name is None:
@@ -673,10 +673,10 @@ def add(type, product, version, yes):
     """
     Adds a product in the current cluster.
 
-    :param type: TODO
-    :param product: TODO
-    :param version: TODO
-    :param yes: TODO
+    :param type: the installation type of the product to be added
+    :param product: the cloud native product to be added
+    :param version: the desired version of the product to be added
+    :param yes: flag to automatically answer "yes" to all prompts and proceed
     """
     product_cat = dict()
     installation_type = dict()
@@ -684,7 +684,7 @@ def add(type, product, version, yes):
     operatorRepo = dict()
     operatorDir = dict()
     operatorImage = dict()
-    imageVersion = dict()  # TODO this shouldn't be here, use default version instead
+    imageVersion = dict()  # FIXME this shouldn't be here, use default version instead
     operatorVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
@@ -736,9 +736,9 @@ def update(type, product, version):
     """
     Updates a product in the current cluster.
 
-    :param type: TODO
-    :param product: TODO
-    :param version: TODO
+    :param type: the installation type of the product to be updated
+    :param product: the cloud native product to be updated
+    :param version: the new desired version of the product to be updated
     """
     if type == 'operator':
         print(f'Upadating {product} with latest version ({version})')

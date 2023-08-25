@@ -280,7 +280,7 @@ if ! check_command "cnquery"; then
     bash -c "$(curl -sSL https://install.mondoo.com/sh)"
 fi
 
-## TODO install kubelab latest from package :D
+pip install kubelab-cli
 ## TODO remove terraform in favor of open-tf as soon as available
 
 echo "All required tools are installed."

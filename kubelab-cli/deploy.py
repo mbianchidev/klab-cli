@@ -36,14 +36,15 @@ class Deploy:
             print("Deployment failed")
         data = [
             {
+                # FIXME this is pure garbage, why we always rewrite everything instead of just editing the installed type and version?
                 'product': productName,
                 'default_version': 'latest',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
                 'installed_version': self.imageVersion,
                 'installed_type': self.installed_type,
-                'operatorRepo': operatorRepo, 
-                # FIXME this is pure garbage, why we always rewrite everything instead of just editing the installed type and version?
+                'operatorRepo': 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
+                # FIXME this is hardcoded, we should get it from the catalog.yaml
                 'operatorVersion': self.op_version,
                 'operatorImage': self.operatorImage,
                 'operatorDir': self.operatorDir,
