@@ -12,6 +12,7 @@ from datetime import datetime
 
 CREDENTIALS_DIR = 'credentials'
 LOGS_DIR = 'logs'
+GENERIC_LOG_FILE = 'kubelab.log'
 
 AWS_PROVIDER = 'AWS'
 AWS_PROFILE_FILE = '~/.aws/credentials'
@@ -24,8 +25,6 @@ AZURE_LOG_FILE = 'kubelab-azure.log'
 GCP_PROVIDER = 'GCP'
 GCP_PROFILE_FILE = '~/.config/gcloud/configurations/config_default'
 GCP_LOG_FILE = 'kubelab-gcp.log'
-
-GENERIC_LOG_FILE = 'kubelab.log'
 
 # Get the script dir + create credentials and logs dirs + init files
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -41,7 +40,7 @@ generic_logs_file = os.path.join(logs_dir, GENERIC_LOG_FILE)
 def cli():
     pass
 
-def log_message(message, provider=None):
+def log(message, provider=None):
     global aws_logs_file
     global azure_logs_file
     global gcp_logs_file
@@ -56,6 +55,7 @@ def log_message(message, provider=None):
         log_file = gcp_logs_file
     else:
         log_file = generic_logs_file
+    click.echo(log_entry)
     with open(log_file, 'a') as log_file:
         log_file.write(log_entry)
 
@@ -67,8 +67,8 @@ def init_terraform(provider, credentials_file):
 
         # Copy credentials to kube_credentials_file_path
         shutil.copy(credentials_file, kube_credentials_file)
-        click.echo(f'{provider} credentials saved to {kube_credentials_file}\n')
-        click.echo(f"Initializing Terraform for {provider}...\n")
+        log(f'{provider} credentials saved to {kube_credentials_file}\n')
+        log(f"Initializing Terraform for {provider}...\n")
 
         try:
             # Change directory to the provider-specific directory
@@ -78,16 +78,13 @@ def init_terraform(provider, credentials_file):
             subprocess.check_call(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
             # Log success
-            log_message(f"Terraform for {provider} is successfully initialized.", provider)
-            click.echo(f"Terraform for {provider} is successfully initialized.\n")
+            log(f"Terraform for {provider} is successfully initialized.", provider)
         except subprocess.CalledProcessError as e:
             # Log failure and display error message
-            log_message(f"Terraform for {provider} failed to initialize.", provider)
-            log_message(e.output, provider)
-            click.echo(f"Terraform for {provider} failed to initialize. Please check the logs in the 'logs' directory.\n")
+            log(f"Terraform for {provider} failed to initialize.", provider)
+            log(e.output, provider)
     else:
-        click.echo(f'Error: {provider} credentials file not found. Please configure {provider} CLI before proceeding.\n')
-        log_message(f"{provider} credentials file not found.", provider)
+        log(f"{provider} credentials file not found. Please configure {provider} CLI before proceeding.", provider)
 
 def init_aws():
     aws_credentials_file = os.path.expanduser(AWS_PROFILE_FILE)
@@ -96,8 +93,8 @@ def init_aws():
         # Checking if AWS CLI is installed
         subprocess.check_output(['aws', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
     except subprocess.CalledProcessError as e:
-        click.echo('Error: AWS CLI is not installed or configured. Please install and configure it before proceeding.\n')
-        log_message("AWS CLI is not installed or configured.", AWS_PROVIDER)
+        log("AWS CLI is not installed or configured. Please install and configure it before proceeding.", AWS_PROVIDER)
+        log(e.output, AWS_PROVIDER)
     else:
         init_terraform(AWS_PROVIDER, aws_credentials_file)
 
@@ -108,15 +105,14 @@ def init_azure():
         # Check if Azure CLI is installed
         subprocess.check_output(['az', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
     except subprocess.CalledProcessError as e:
-        click.echo('Error: Azure CLI is not installed or configured. Please install and configure it before proceeding.\n')
-        log_message("Azure CLI is not installed or configured.", AZURE_PROVIDER)
+        log("Azure CLI is not installed or configured. Please install and configure it before proceeding.", AZURE_PROVIDER)
+        log(e.output, AZURE_PROVIDER)
     else:
         try:
             # Check if Azure CLI is logged in
             subprocess.check_output(['az', 'account', 'show'], stderr=subprocess.STDOUT, universal_newlines=True)
         except subprocess.CalledProcessError as e:
-            click.echo('Error: Azure CLI is not logged in. Please log in before proceeding.\n')
-            log_message("Azure CLI is not logged in.", AZURE_PROVIDER)
+            log("Azure CLI is not logged in. Please log in before proceeding.", AZURE_PROVIDER)
         else:
             init_terraform(AZURE_PROVIDER, azure_profile_file)
 
@@ -127,8 +123,8 @@ def init_gcp():
         # Check if GCP CLI is installed
         subprocess.check_output(['gcloud', '--version'], stderr=subprocess.STDOUT, universal_newlines=True)
     except subprocess.CalledProcessError as e:
-        click.echo('Error: Google Cloud CLI is not installed or configured. Please install and configure it before proceeding.\n')
-        log_message("Google Cloud CLI is not installed or configured.", GCP_PROVIDER)
+        log("Google Cloud CLI is not installed or configured. Please install and configure it before proceeding.", GCP_PROVIDER)
+        log(e.output, GCP_PROVIDER)
     else:
         init_terraform(GCP_PROVIDER, gcp_profile_file)
 
