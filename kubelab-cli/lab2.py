@@ -259,7 +259,7 @@ def create_gke(cluster_name, region, project, wait):
     os.chdir(script_dir)
     log(f"GKE Cluster {cluster_name} has been successfully created in {region}.", GCP_PROVIDER)
 
-def save_cluster_info(cluster_name, provider, region, credential_file, products=None):
+def save_cluster_info(cluster_name, provider, region, resource_group, project, credential_file, products=None):
 
     # Define the cluster information dictionary
     cluster_info = {
@@ -267,6 +267,8 @@ def save_cluster_info(cluster_name, provider, region, credential_file, products=
         "provider": provider,
         "region": region,
         "credential_file": f"{CREDENTIALS_DIR}/{credential_file}",
+        "resource_group": resource_group,
+        "project": project,
         "products": products
     }
 
@@ -277,13 +279,15 @@ def save_cluster_info(cluster_name, provider, region, credential_file, products=
     with open(file_name, "w") as yaml_file:
         yaml.dump(cluster_info, yaml_file, default_flow_style=False)
 
+    log(f"Cluster information saved to {file_name}.")
+
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--name', '-n', required=True, help='Name of the cluster to be created', metavar='<cluster_name>')
 @click.option('--provider', '-p', required=True, type=click.Choice([AWS_PROVIDER, AZURE_PROVIDER, GCP_PROVIDER]), help='Provider of choice', metavar='<provider>')
-@click.option('--region', '-r', required=True, type=str, help='Cluster region (required for AWS and GCP)', metavar='<region>')
-@click.option('--resource-group', '-g', type=str, help='Resource group name (required for Azure)', metavar='<resource_group>')
-@click.option('--project', '-p', type=str, help='GCP project ID (required for GCP)', metavar='<project_id>')
+@click.option('--region', '-r', required=True, type=click.STRING, help='Cluster region (required for AWS and GCP)', metavar='<region>')
+@click.option('--resource-group', '-g', type=click.STRING, help='Resource group name (required for Azure)', metavar='<resource_group>')
+@click.option('--project', '-p', type=click.STRING, help='GCP project ID (required for GCP)', metavar='<project_id>')
 @click.option('--wait', '-w', is_flag=True, default=False, showDefault=True, help='wait for commands completion or not')
 def create(type, cluster_name, provider, region, resource_group, project, wait):
     """
@@ -313,8 +317,47 @@ def create(type, cluster_name, provider, region, resource_group, project, wait):
                 log("Invalid provider specified.")
                 return
             # Save cluster info
-            save_cluster_info(cluster_name, provider, region, f"{provider}_kube_credential")
+            save_cluster_info(cluster_name, provider, region, resource_group, project, f"{provider}_kube_credential")
+            log(f"Cluster {cluster_name} has been successfully created.", provider)
         # Default case
+        case _:
+            log("Invalid type specified. Only 'cluster' is supported.")
+            return
+
+def search_clusters(name, provider):
+    # Search for clusters based on the name and provider
+    clusters = []
+    for file in os.listdir(CLUSTERS_DIR):
+        # Name is optional so if it is not set, all clusters will be considered
+        if name is None or fnmatch.fnmatch(file, f'{name}_cluster.yaml'):
+            with open(os.path.join(CLUSTERS_DIR, file), 'r') as cluster_file:
+                cluster_info = yaml.safe_load(cluster_file)
+                # Cluster provider is optional, so if it is not set, all providers will be considered
+                if provider is None or provider == cluster_info['provider']:
+                    clusters.append(cluster_info)
+    return clusters
+
+@cli.command()
+@click.argument('type', type=click.Choice(['cluster']))
+@click.option('--provider', '-p', required=False, type=click.Choice([AWS_PROVIDER, AZURE_PROVIDER, GCP_PROVIDER]), help='Provider filter', metavar='<provider>')
+@click.option('--name', '-n', type=click.STRING, required=False, help='Name filter', metavar='<name>')
+def list(type, provider, name):
+    """
+    Lists resources available and connected to the kubelab cli.
+
+    :param type: the resource type to be listed
+    :param provider: the cloud provider to be used for filtering (optional)
+    :param name: the name pattern to be used for filtering (optional)
+    """
+
+    match type:
+        case 'cluster':
+            clusters = search_clusters(name, provider)
+            if len(clusters) == 0:
+                log("No clusters found.")
+            else:
+                log(f"{clusters}")
+            return
         case _:
             log("Invalid type specified. Only 'cluster' is supported.")
             return
