@@ -74,6 +74,12 @@ def log(message, provider=None):
         log_file.write(log_entry)
 
 
+def check_parameters(**kwargs):
+    for param_name, param_value in kwargs.items():
+        if param_value is None or param_value == "":
+            raise ValueError(f"Parameter '{param_name}' is None or blank. Please check the required parameters and try again.")
+
+
 def execute_command(command, log_file_path, wait=False):
     with open(log_file_path, 'a') as log_file:
         # Utility function to run a command and wait for its completion
@@ -190,6 +196,7 @@ def init(providers):
         azure_init()
     if not providers or GCP_PROVIDER in providers:
         gcp_init()
+    return
 
 
 def extract_default_value(config_file, section, key):
@@ -274,6 +281,19 @@ def create_gke(cluster_name, region, project, wait):
     log(f"GKE Cluster {cluster_name} has been successfully created in {region}.", GCP_PROVIDER)
 
 
+def get_cluster_info(cluster_name):
+    # Getting cluster info from the YAML file if exists
+    cluster_file_path = f'{CLUSTERS_DIR}/{cluster_name}_cluster.yaml'
+    if not os.path.isfile(cluster_file_path):
+        log(f"Cluster configuration file for {cluster_name} not found. Assuming the cluster does not exist or it is not imported yet.")
+        return None
+    with open(cluster_file_path, 'r') as file:
+        cluster_info = yaml.safe_load(file)
+    if not cluster_info:
+        log(f"Cluster configuration file for {cluster_name} is empty. Please check the file.")
+        return None
+    return cluster_info
+
 def save_cluster_info(cluster_name, provider, region, resource_group, project, credential_file, products=None):
 
     # Define the cluster information dictionary
@@ -299,11 +319,11 @@ def save_cluster_info(cluster_name, provider, region, resource_group, project, c
 
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
-@click.option('--name', '-n', required=True, help='Name of the cluster to be created', metavar='<cluster_name>')
+@click.option('--name', '-n', required=True, help='Name of the resource to be created', metavar='<resource_name>')
 @click.option('--provider', '-p', required=True, type=click.Choice([AWS_PROVIDER, AZURE_PROVIDER, GCP_PROVIDER]), help='Provider of choice', metavar='<provider>')
-@click.option('--region', '-r', required=True, type=click.STRING, help='Cluster region (required for AWS and GCP)', metavar='<region>')
+@click.option('--region', '-r', required=True, type=click.STRING, help='Resource region', metavar='<region>')
 @click.option('--resource-group', '-g', type=click.STRING, help='Resource group name (required for Azure)', metavar='<resource_group>')
-@click.option('--project', '-p', type=click.STRING, help='GCP project ID (required for GCP)', metavar='<project_id>')
+@click.option('--project', '-p', type=click.STRING, help='Project ID (required for GCP)', metavar='<project_id>')
 @click.option('--wait', '-w', is_flag=True, default=False, showDefault=True, help='wait for commands completion or not')
 def create(type, cluster_name, provider, region, resource_group, project, wait):
     """
@@ -319,25 +339,19 @@ def create(type, cluster_name, provider, region, resource_group, project, wait):
 
     match type:
         case 'cluster':
-            if not cluster_name:
-                log("Cluster name was not set and it is required. Please specify it as a parameter.")
-                return
-            if not provider:
-                log("Provider was not set and it is required. Please specify it as a parameter.")
-                return
-            if not region:
-                log("Region was not set and it is required. Please specify it as a parameter.")
-                return
+            check_parameters(name=cluster_name, provider=provider, region=region)
             # Check if the cluster already exists
             if len(search_clusters(cluster_name, provider)) > 0:
-                log(f"Cluster {cluster_name} already exists. Please use a different unique name.")
+                log(f"Cluster {cluster_name} already exists, name must be unieuq. Please use a different name.")
                 return
             # Creating clusters
             if provider == AWS_PROVIDER:
                 create_eks(cluster_name, region, wait)
             if provider == AZURE_PROVIDER:
+                check_parameters(resource_group=resource_group)
                 create_aks(cluster_name, region, resource_group, wait)
             if provider == GCP_PROVIDER:
+                check_parameters(project=project)
                 create_gke(cluster_name, region, project, wait)
             else:
                 log(UNSUPPORTED_PROVIDER_MSG)
@@ -345,6 +359,7 @@ def create(type, cluster_name, provider, region, resource_group, project, wait):
             # Save cluster info
             save_cluster_info(cluster_name, provider, region, resource_group, project, f"{provider}_kube_credential")
             log(f"Cluster {cluster_name} has been successfully created.", provider)
+            return
         # Default case
         case _:
             log(UNSUPPORTED_TYPE_MSG)
@@ -368,7 +383,7 @@ def search_clusters(name, provider):
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--provider', '-p', required=False, type=click.Choice([AWS_PROVIDER, AZURE_PROVIDER, GCP_PROVIDER]), help='Provider filter', metavar='<provider>')
-@click.option('--name', '-n', type=click.STRING, required=False, help='Name filter', metavar='<name>')
+@click.option('--name', '-n', type=click.STRING, required=False, help='Name filter for resource', metavar='<name>')
 def list(type, provider, name):
     """
     Lists resources available and connected to the kubelab cli.
@@ -389,6 +404,67 @@ def list(type, provider, name):
         case _:
             log(UNSUPPORTED_TYPE_MSG)
             return
+
+def switch_to_cluster(name, provider, region, resource_group, project):
+    check_parameters(name=name, provider=provider)
+    # Update the Kubernetes configuration based on the cluster's cloud provider
+    if provider == AWS_PROVIDER:
+        check_parameters(region=region)
+        update_kubeconfig_cmd = f"aws eks update-kubeconfig --region {region} --name {name}"
+    if provider == AZURE_PROVIDER:
+        check_parameters(resource_group=resource_group)
+        update_kubeconfig_cmd = f"az aks get-credentials --resource-group {resource_group} --name {name} --overwrite-existing"
+    if provider == GCP_PROVIDER:
+        check_parameters(region=region, project=project)
+        update_kubeconfig_cmd = f"gcloud container clusters get-credentials {name} --region {region} --project {project}"
+    else:
+        log(UNSUPPORTED_PROVIDER_MSG)
+        return
+    execute_command(update_kubeconfig_cmd, generic_logs_file, wait=True)
+    log(f"Kubernetes configuration updated for {name} cluster.", provider)
+    return
+
+@cli.command()
+@click.argument('type', type=click.Choice(['cluster']))
+@click.option('--name', '-n', required=True, help='Name of the resource to be used', metavar='<resource_name>')
+@click.option('--provider', '-p', required=False, type=click.Choice([AWS_PROVIDER, AZURE_PROVIDER, GCP_PROVIDER]), help='Provider of choice', metavar='<provider>')
+@click.option('--region', '-r', required=False, type=click.STRING, help='Resource region', metavar='<region>')
+@click.option('--resource-group', '-g', required=False, type=click.STRING, help='Resource group name', metavar='<resource_group>')
+@click.option('--project', '-p', required=False, type=click.STRING, help='Project ID', metavar='<project_id>')
+def use(type, name, provider, region, resource_group, project):
+    """
+    Select a resource to switch to, it can be pre-existing or created with the kubelab cli.
+
+    :param type: the type of resource to switch to
+    :param cluster: the name of the resource to switch to
+    :param provider: the cloud provider of the resource
+    :param region: the region of the resource
+    :param resource_group: the resource group of the cluster (Azure)
+    :param project: the GCP project of the cluster (GCP)
+    """
+    match type:
+        case 'cluster':
+            # Check if the cluster already exists and is managed by the kubelab cli
+            cluster_info = get_cluster_info(name)
+            if not cluster_info:
+                log(f"Cluster {name} is not managed by the kubelab-cli. Trying to use it via provided parameters...")
+                switch_to_cluster(name, provider, region, resource_group, project)
+                # Save cluster info since it is not managed by the kubelab-cli, next time it will be used via the saved info
+                save_cluster_info(name, provider, region, resource_group, project, f"{provider}_kube_credential")
+                return
+            # Extract cluster information from file in case it exists
+            cluster_name = cluster_info.get('name')
+            cluster_provider = cluster_info.get('provider')
+            cluster_region = cluster_info.get('region')
+            cluster_resource_group = cluster_info.get('resource_group')
+            cluster_project = cluster_info.get('project')
+            # Switches to cluster
+            switch_to_cluster(cluster_name, cluster_provider, cluster_region, cluster_resource_group, cluster_project)
+            return
+        case _:
+            log(UNSUPPORTED_TYPE_MSG)
+            return
+
 
 def destroy_eks(name, region):
     log(f"You have selected to destroy cluster: {name} that is located in: {region}", AWS_PROVIDER)
@@ -473,9 +549,9 @@ def destroy_gke(name, region, project, yes):
 
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
-@click.option('--name', '-n', required=True, type=click.STRING, help='Name of the cluster to be destroyed')
-@click.option('--region', required=True, type=click.STRING, help='Location of the cluster')
-@click.option('--interactive', '-i', is_flag=True, help='Shows a list of clusters to choose from')
+@click.option('--name', '-n', required=True, type=click.STRING, help='Name of the resource to be destroyed', metavar='<resource_name>')
+@click.option('--region', required=True, type=click.STRING, help='Location of the resource', metavar='<region>')
+@click.option('--interactive', '-i', is_flag=True, help='Shows a list of resources to choose from')
 @click.option('--yes', '-y', is_flag=True, help='Skip all prompts and proceed with destruction in quiet mode.')
 def destroy(type, name, region, interactive, yes):
     """
@@ -508,13 +584,8 @@ def destroy(type, name, region, interactive, yes):
                     log("Invalid selection. Aborting.")
                     return
             else:
+                check_parameters(name=name, region=region)
                 # Use provided parameters
-                if not name:
-                    log("Cluster name was not set and it is required. Please specify it as a parameter.")
-                    return
-                if not region:
-                    log("Region was not set and it is required. Please specify it as a parameter.")
-                    return
                 cluster_name = name
                 cluster_region = region
             if not yes:
@@ -522,16 +593,7 @@ def destroy(type, name, region, interactive, yes):
                 if not click.confirm("Are you sure you want to destroy the cluster? This operation will also destroy all the resources associated with it. Type 'yes' or 'y' to confirm."):
                     log("Cluster destruction has been cancelled.")
                     return
-            # Getting cluster info from the YAML file if exists
-            cluster_file_path = f'{CLUSTERS_DIR}/{cluster_name}_cluster.yaml'
-            if not os.path.isfile(cluster_file_path):
-                log(f"Cluster configuration file for {cluster_name} not found. Assuming the cluster does not exist or it is not imported yet.")
-                return
-            with open(f'{CLUSTERS_DIR}/{cluster_name}_cluster.yaml', 'r') as file:
-                cluster_info = yaml.safe_load(file)
-            if not cluster_info:
-                log(f"Cluster configuration file for {cluster_name} is empty. Please check the file.")
-                return
+            cluster_info = get_cluster_info(cluster_name)
             # Extract cluster information
             cluster_name = cluster_info.get('name')
             provider = cluster_info.get('provider')
@@ -553,8 +615,9 @@ def destroy(type, name, region, interactive, yes):
                 log(UNSUPPORTED_PROVIDER_MSG)
                 return
             # Deleting cluster info file
-            os.remove(cluster_file_path)
-            log(f"Cluster {cluster_name} has been successfully deleted along with the config file.", provider)
+            os.remove(f"{CLUSTERS_DIR}/{cluster_name}_cluster.yaml")
+            log(f"Cluster {cluster_name} has been successfully deleted along with its config file.", provider)
+            return
         # Default case
         case _:
             log(UNSUPPORTED_TYPE_MSG)
