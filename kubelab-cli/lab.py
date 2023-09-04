@@ -800,7 +800,7 @@ def update(type, product, version):
 @cli.command()
 @click.option('--type', install_type=click.Choice(['operator', 'deployment']), help='Installation type of the product')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-def delete(install_type, product):
+def remove(install_type, product):
     """
     Deletes a product in the current cluster.
 
