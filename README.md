@@ -2,7 +2,7 @@
 
 kubelab-cli is a command line tool that empowers developers to effortlessly create, manage, and destroy Kubernetes clusters on popular cloud providers such as AWS, Azure, and GCP, obtaining Terraform code and easy yaml configs in return.
 
-Additionally, it enables users to easily manage products on top of the clusters, such as NGINX, and deploy them using various methods like deployment, operator or custom (like Helm, and Kustomize - coming soon).
+Additionally, it enables users to easily manage products on top of the clusters, such as NGINX, and deploy them using your own configuration as deployments, operators, CRDs...
 
 ## Features
 
@@ -26,9 +26,10 @@ Before using kubelab-cli, ensure you have the following dependencies installed o
 - AWS CLI (if using AWS as a cloud provider)
 - Azure CLI (if using Azure as a cloud provider)
 - Google Cloud CLI (if using GCP as a cloud provider)
+- Terraform CLI
 
 Or you can use the kubelab-cli install script to install all the dependencies for you.
-Run the following command to install the dependencies:
+Run the following command to install the dependencies and the cli itself:
 
 ```bash
 curl -s https://raw.githubusercontent.com/kubelab-middleware/install.sh | bash
@@ -48,13 +49,15 @@ Add into your .vscode/settings.json
 ],
 ```
 
-## Installation
+## Other means of installation
 
-1. Download the kubelab-cli binary for your operating system from the official GitHub repository.
+1. Download the kubelab-cli binary for your operating system from the official GitHub repository, then place the repo in a directory you like, use it via python execution or add it to your PATH.
 
-2. Place the binary in a directory accessible from your system's PATH variable.
+2. Install it via pip:
 
-3. Ensure the binary has executable permissions. If not, you can set them using `chmod +x lab`.
+```bash
+pip install kubelab-cli
+```
 
 ## Usage
 
@@ -108,27 +111,55 @@ lab [command] [options]
 
 ## Configuration
 
-kubelab-cli supports configuration files to define cluster and product settings. By default, it looks for a configuration file in the `credentials/` directory named `clusters.yaml`. You can also specify a custom configuration file using the `--config` flag.
+kubelab-cli uses configuration files to define cluster and product settings. By default, it looks for config files in the `catalog/` and `clusters/` directory.
 
-### Example Configuration (clusters.yaml)
+### Example Configuration (cluster_sample.yaml)
 
 ```yaml
 # Clusters configuration
-cluster:
-  name: my-cluster
-  provider: aws
-  region: us-west-2
+name: sample
+provider: aws
+region: us-east-1
+credential_file: ~/.aws/credentials
+products:
+  - nginx:
+      type: operator
+      version: 1.0.0
+      replicas: 2
+      port: 80
 ```
 
 ### Example Configuration (catalog.yaml)
 
 ```yaml
-# Product configuration
-products:
-  - name: nginx
-    method: deployment
-    version: 3.0.2
-    values_file: nginx-values.yaml
+- product: nginx
+  default_version: latest
+  default_type: deployment
+  available_types:
+    - deployment
+    - operator
+  installed_version: 
+  installed_type: 
+  operatorRepo: https://github.com/nginxinc/nginx-ingress-helm-operator/
+  operatorVersion: 1.5.0
+  operatorImage: nginx/nginx-ingress-operator
+  operatorDir: catalog/nginx/nginx-ingress-helm-operator
+  deploymentFile: catalog/nginx/deployment/deployment.yaml
+  imageVersion: latest
+- product: istio
+  default_version: latest
+  default_type: deployment
+  available_types:
+    - deployment
+    - operator
+  installed_version:
+  installed_type:
+  operatorRepo: https://github.com/istio/istio/tree/master/operator
+  operatorVersion: 1.20.0
+  operatorImage: istio/operator
+  operatorDir: catalog/istio/istio-operator
+  deploymentFile: catalog/istio/deployment/deployment.yaml
+  imageVersion: latest
 ```
 
 ## Support and Contribution

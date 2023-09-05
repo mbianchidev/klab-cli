@@ -625,6 +625,23 @@ def destroy(type, name, region, interactive, yes):
 
 
 @cli.command()
+@click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
+@click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
+@click.option('--version', type=click.STRING, help="product version", required=False)
+@click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed.')
+def add(type, product, version, yes):
+    """
+    Adds a product in the current cluster.
+
+    :param type: the installation type of the product to be added
+    :param product: the cloud native product to be added
+    :param version: the desired version of the product to be added
+    :param yes: flag to automatically answer "yes" to all prompts and proceed
+    """
+    return
+
+
+@cli.command()
 def info():
     """
     Query your cluster for information via an interactive shell from Mondoo.
