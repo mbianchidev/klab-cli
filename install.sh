@@ -4,6 +4,7 @@ AWS_DOC_URL="https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linu
 EKSCTL_DOC_URL="https://eksctl.io/introduction/#installation"
 AZURE_DOC_URL="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux?pivots=apt"
 GCP_DOC_URL="https://cloud.google.com/sdk/docs/install"
+TF_DOC_URL="https://learn.hashicorp.com/tutorials/terraform/install-cli"
 
 # Function to check if a command is available, kinda clunky but w/e
 check_command() {
@@ -76,6 +77,13 @@ install_req() {
     done
 }
 
+check_install_brew() { 
+    if ! check_command "brew"; then
+        echo "Homebrew is not installed. Installing it now."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+}
+
 # Install required packages and updates your packages
 install_req "tar" "curl" "unzip"
 
@@ -89,7 +97,8 @@ get_architecture() {
 
     case $choice in
         0)
-            exit 0
+            ARCHITECTURE="Unknown"
+            ARCH="Unknown"
             ;;
         1)
             ARCHITECTURE="x64"
@@ -106,6 +115,30 @@ get_architecture() {
     esac
 }
 
+get_bash_config_file() {
+    echo "Select your bash config file:"
+    echo "0. Exit"
+    echo "1. ~/.bashrc"
+    echo "2. ~/.zshrc"
+    read -p "Enter the number corresponding to your choice: " choice
+
+    case $choice in
+        0)
+            BASH_CONFIG=""
+            ;;
+        1)
+            BASH_CONFIG="~/.bashrc"
+            ;;
+        2)
+            BASH_CONFIG="~/.zshrc"
+            ;;
+        *)
+            echo "Invalid choice. Please select 1 or 2 (or 0 to exit)."
+            get_bash_config_file
+            ;;
+    esac
+}
+
 # Get current directory and save it
 CURRENT_DIR=$(pwd)
 # Change to the home directory
@@ -113,6 +146,9 @@ cd ~
 
 # Prompt the user for architecture choice
 get_architecture
+
+# Prompt the user for bash config choice
+get_bash_config_file
 
 get_os_info() {
     if [ -f "/etc/os-release" ]; then
@@ -202,7 +238,7 @@ if ! check_command "aws"; then
     tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
     . <(eksctl completion bash)
     echo "EKS CLI (should be) installed. If something goes wrong, please install it manually referring to the doc: $EKSCTL_DOC_URL"
-    source ~/.bashrc
+    source $BASH_CONFIG
 fi
 
 # Check and install Azure CLI
@@ -254,7 +290,7 @@ if ! check_command "az"; then
             ;;
     esac
     echo "Azure CLI (should be) installed. If something went wrong, please install it manually referring to the doc: $AZURE_DOC_URL"
-    source ~/.bashrc
+    source $BASH_CONFIG
 fi
 
 add_gpg_key_google_cloud() {
@@ -352,16 +388,67 @@ EOM
         ;;
     esac
     echo "Google Cloud SDK (should be) installed. If something went wrong, please install it manually referring to the doc: $GCP_DOC_URL"
-    source ~/.bashrc
+    source $BASH_CONFIG
     gcloud init --skip-diagnostics --no-launch-browser 
     # login via browser is not possible to automate unless using a complex system of mirrors and levers
 fi
 
+# Install terraform
+## TODO remove terraform in favor of open-tf as soon as available
+if ! check_command "terraform"; then
+    case $OS_TYPE in 
+        "Debian/Ubuntu")
+            sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
+            wget -O- https://apt.releases.hashicorp.com/gpg | \
+            gpg --dearmor | \
+            sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+            gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg \
+            --fingerprint
+            echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
+            https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+            sudo tee /etc/apt/sources.list.d/hashicorp.list
+            sudo apt update && sudo apt-get install terraform
+            ;;
+        "RHEL/CentOS")
+            el_version=""
+            case "$OS_VERSION" in
+                7)
+                    echo "Running RHEL/CentOS version 7"
+                    el_version="el7"
+                    ;;
+                8)
+                    echo "Running RHEL/CentOS version 8"
+                    el_version="el8"
+                    ;;
+                9)
+                    echo "Running RHEL/CentOS version 9"
+                    el_version="el9"
+                    ;;
+            esac
+            sudo yum install -y yum-utils
+            sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+            sudo yum -y install terraform
+            ;;
+        "Fedora")
+            sudo dnf install -y dnf-plugins-core
+            sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo
+            sudo dnf -y install terraform
+            ;;
+        *) #every other case
+        check_install_brew
+        brew tap hashicorp/tap
+        brew install hashicorp/tap/terraform
+        ;;
+    esac
+    terraform -install-autocomplete
+    echo "Terraform (should be) installed. If something went wrong, please install it manually referring to the doc: $TF_DOC_URL"
+    source $BASH_CONFIG
+fi
+
 # Check and install k9s
 if ! check_command "k9s"; then
-    if ! check_command "brew"; then
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    fi
+    check_install_brew
     brew tap derailed/k9s
     brew install derailed/k9s/k9s
 fi
@@ -372,7 +459,6 @@ if ! check_command "cnquery"; then
 fi
 
 pip install kubelab-cli
-## TODO remove terraform in favor of open-tf as soon as available
 
 # Change back to the original directory
 cd $CURRENT_DIR
