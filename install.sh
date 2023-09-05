@@ -1,5 +1,10 @@
 #!/bin/bash
 
+AWS_DOC_URL="https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html"
+EKSCTL_DOC_URL="https://eksctl.io/introduction/#installation"
+AZURE_DOC_URL="https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux?pivots=apt"
+GCP_DOC_URL="https://cloud.google.com/sdk/docs/install"
+
 # Function to check if a command is available, kinda clunky but w/e
 check_command() {
     command -v "$1" >/dev/null 2>&1
@@ -11,28 +16,100 @@ install_with_apt() {
     sudo apt-get install -y "$1"
 }
 
+install_with_brew() {
+    brew tap --repair
+    brew update
+    brew install "$1"
+}
+
+install_with_yum() {
+    sudo yum update
+    sudo yum install -y "$1"
+}
+
+install_with_dnf() {
+    sudo dnf update
+    sudo dnf install -y "$1"
+}
+
+install_with_zypper() {
+    sudo zypper update
+    sudo zypper install -y "$1"
+}
+
+install_req() {
+    # Also sets the package manager variable
+    if check_command "apt-get"; then
+        PACKAGE_MANAGER="apt-get"
+    elif check_command "brew"; then
+        PACKAGE_MANAGER="brew"
+    elif check_command "yum"; then
+        PACKAGE_MANAGER="yum"
+    elif check_command "dnf"; then
+        PACKAGE_MANAGER="dnf"
+    elif check_command "zypper"; then
+        PACKAGE_MANAGER="zypper"
+    else
+        echo "Error: Unsupported package manager found."
+        return 1
+    fi
+
+    packages=("$@")
+
+    for package in "${packages[@]}"; do
+        if ! check_command "$package"; then
+            case $PACKAGE_MANAGER in
+                "apt-get")
+                    install_with_apt "$package"
+                    ;;
+                "yum")
+                    install_with_yum "$package"
+                    ;;
+                "dnf")
+                    install_with_dnf "$package"
+                    ;;
+                "zypper")
+                    install_with_zypper "$package"
+                    ;;
+            esac
+        fi
+    done
+}
+
+# Install required packages and updates your packages
+install_req "tar" "curl" "unzip"
+
 # Function to prompt for user input, could it be done better? probably
 get_architecture() {
     echo "Select your system architecture:"
+    echo "0. Exit"
     echo "1. x64"
     echo "2. ARM"
     read -p "Enter the number corresponding to your choice: " choice
 
     case $choice in
+        0)
+            exit 0
+            ;;
         1)
             ARCHITECTURE="x64"
+            ARCH="amd64"
             ;;
         2)
             ARCHITECTURE="ARM"
+            ARCH="arm64"
             ;;
         *)
-            echo "Invalid choice. Please select 1 or 2."
+            echo "Invalid choice. Please select 1 or 2 (or 0 to exit)."
             get_architecture
             ;;
     esac
 }
 
-cd ~ # Change to the home directory
+# Get current directory and save it
+CURRENT_DIR=$(pwd)
+# Change to the home directory
+cd ~
 
 # Prompt the user for architecture choice
 get_architecture
@@ -85,9 +162,15 @@ get_os_info() {
 
 # Call the function to get the OS information
 get_os_info
+
+PLATFORM=$(uname -s)_$ARCH
+
 echo "Detected OS type: $OS_TYPE"
 echo "OS Name: $OS_NAME"
 echo "OS Version: $OS_VERSION"
+echo "Architecture: $ARCHITECTURE"
+echo "Platform: $PLATFORM"
+echo "Package manager: $PACKAGE_MANAGER"
 
 # Check and install Python
 if ! check_command "python3"; then
@@ -102,7 +185,7 @@ if ! check_command "python3"; then
     esac
 fi
 
-# Check and install AWS CLI
+# Check and install AWS CLI and eksctl
 if ! check_command "aws"; then
     case $ARCHITECTURE in
         "x64")
@@ -114,7 +197,11 @@ if ! check_command "aws"; then
     esac
     unzip awscliv2.zip
     sudo ./aws/install
-    echo "AWS CLI (should be) installed. If something goes wrong, please install it manually referring to the doc: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2-linux.html"
+    echo "AWS CLI (should be) installed. If something goes wrong, please install it manually referring to the doc: $AWS_DOC_URL"
+    curl -sLO "https://github.com/eksctl-io/eksctl/releases/latest/download/eksctl_$PLATFORM.tar.gz"
+    tar -xzf eksctl_$PLATFORM.tar.gz -C /tmp && rm eksctl_$PLATFORM.tar.gz
+    . <(eksctl completion bash)
+    echo "EKS CLI (should be) installed. If something goes wrong, please install it manually referring to the doc: $EKSCTL_DOC_URL"
     source ~/.bashrc
 fi
 
@@ -166,7 +253,7 @@ if ! check_command "az"; then
             curl -L https://aka.ms/InstallAzureCli | bash
             ;;
     esac
-    echo "Azure CLI (should be) installed. If something went wrong, please install it manually referring to the doc: https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-linux?pivots=apt"
+    echo "Azure CLI (should be) installed. If something went wrong, please install it manually referring to the doc: $AZURE_DOC_URL"
     source ~/.bashrc
 fi
 
@@ -259,19 +346,23 @@ EOM
                 curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-444.0.0-linux-arm.tar.gz -o "google-cloud-sdk.tar.gz"
                 ;;
         esac
-        tar -xf google-cloud-cli-444.0.0-linux-x86.tar.gz
+        tar -xf google-cloud-sdk.tar.gz
         ./google-cloud-sdk/install.sh --quiet
+        rm -f google-cloud-sdk.tar.gz
         ;;
     esac
-    echo "Google Cloud SDK (should be) installed. If something went wrong, please install it manually referring to the doc: https://cloud.google.com/sdk/docs/install"
+    echo "Google Cloud SDK (should be) installed. If something went wrong, please install it manually referring to the doc: $GCP_DOC_URL"
     source ~/.bashrc
     gcloud init --skip-diagnostics --no-launch-browser 
-    # login via browser is not possible to automate
+    # login via browser is not possible to automate unless using a complex system of mirrors and levers
 fi
 
 # Check and install k9s
 if ! check_command "k9s"; then
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    if ! check_command "brew"; then
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    brew tap derailed/k9s
     brew install derailed/k9s/k9s
 fi
 
@@ -283,4 +374,26 @@ fi
 pip install kubelab-cli
 ## TODO remove terraform in favor of open-tf as soon as available
 
-echo "All required tools are installed."
+# Change back to the original directory
+cd $CURRENT_DIR
+
+echo "All required tools are installed. Thanks for choosing kubelab-cli!"
+
+echo "  _______     _______     _______"
+echo " /      /\\   /      /\\   /      /\\"
+echo "/______/  \\ /______/  \\ /______/  \\"
+echo "\\      \\  / \\      \\  / \\      \\  /"
+echo " \\______\\/   \\______\\/   \\______\\/"
+echo "           "   
+echo " __  ___  __    __  .______    _______  __           ___      .______             ______  __       __ "
+echo "|  |/  / |  |  |  | |   _  \  |   ____||  |         /   \     |   _  \           /      ||  |     |  |"
+echo "|  '  /  |  |  |  | |  |_)  | |  |__   |  |        /  ^  \    |  |_)  |  ______ |  ,----'|  |     |  |"
+echo "|    <   |  |  |  | |   _  <  |   __|  |  |       /  /_\  \   |   _  <  |______||  |     |  |     |  |"
+echo "|  .  \  |  '--'  | |  |_)  | |  |____ |  '----. /  _____  \  |  |_)  |         |  '----.|  '----.|  |"
+echo "|__|\__\  \______/  |______/  |_______||_______|/__/     \__\ |______/           \______||_______||__|"
+echo "  _______     _______     _______"
+echo " /      /\\   /      /\\   /      /\\"
+echo "/______/  \\ /______/  \\ /______/  \\"
+echo "\\      \\  / \\      \\  / \\      \\  /"
+echo " \\______\\/   \\______\\/   \\______\\/"
+echo "           "                                                                                          
