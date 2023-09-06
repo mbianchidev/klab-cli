@@ -11,7 +11,7 @@ azure_logs_file = os.path.join(logs_dir, const.AZURE_LOG_FILE)
 gcp_logs_file = os.path.join(logs_dir, const.GCP_LOG_FILE)
 generic_logs_file = os.path.join(logs_dir, const.GENERIC_LOG_FILE)
 
-def log(message, provider=None):
+def log(message: str, provider=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{timestamp}] {message}\n"
     if provider == const.AWS_PROVIDER:
@@ -33,7 +33,7 @@ def check_parameters(**kwargs):
             raise ValueError(f"Parameter '{param_name}' is None or blank. Please check the required parameters and try again.")
 
 
-def execute_command(command, log_file_path, wait=False):
+def execute_command(command: str, log_file_path: str, wait=False):
     with open(log_file_path, 'a') as log_file:
         # Utility function to run a command and wait for its completion
         try:

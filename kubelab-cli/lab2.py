@@ -8,7 +8,6 @@ from deploy import Deploy
 import shutil
 import fnmatch
 import yaml
-from datetime import datetime
 import configparser
 import utils as utils
 import constants as const
@@ -36,7 +35,7 @@ generic_logs_file = os.path.join(logs_dir, const.GENERIC_LOG_FILE)
 def cli():
     pass
 
-def terraform_init(provider, credentials_file):
+def terraform_init(provider: str, credentials_file: str) -> bool:
     global credentials_dir
     # Check if the credentials file exists
     if os.path.isfile(credentials_file):
@@ -53,16 +52,19 @@ def terraform_init(provider, credentials_file):
             subprocess.check_call(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
             utils.log(f"Terraform for {provider} is successfully initialized.", provider)
             os.chdir(script_dir)
+            return True
         except subprocess.CalledProcessError as e:
             # Log failure and display error message
             utils.log(f"Terraform for {provider} failed to initialize. {e}", provider)
             utils.log(e.output, provider)
             os.chdir(script_dir)
+            return False
     else:
         utils.log(f"{provider} credentials file not found. Please configure {provider} CLI before proceeding.", provider)
+        return False
 
 
-def aws_init():
+def aws_init() -> bool:
     credentials_file = os.path.expanduser(const.AWS_PROFILE_FILE)
 
     try:
@@ -71,11 +73,12 @@ def aws_init():
     except subprocess.CalledProcessError as e:
         utils.log(f"AWS CLI is not installed or configured. Please install and configure it before proceeding. {e}", const.AWS_PROVIDER)
         utils.log(e.output, const.AWS_PROVIDER)
+        return False
     else:
-        terraform_init(const.AWS_PROVIDER, credentials_file)
+        return terraform_init(const.AWS_PROVIDER, credentials_file)
 
 
-def azure_init():
+def azure_init() -> bool:
     credentials_file = os.path.expanduser(const.AZURE_PROFILE_FILE)
 
     try:
@@ -84,17 +87,19 @@ def azure_init():
     except subprocess.CalledProcessError as e:
         utils.log("Azure CLI is not installed or configured. Please install and configure it before proceeding.", const.AZURE_PROVIDER)
         utils.log(e.output, const.AZURE_PROVIDER)
+        return False
     else:
         try:
             # Check if Azure CLI is logged in
             subprocess.check_output(['az', 'account', 'show'], stderr=subprocess.STDOUT, universal_newlines=True)
         except subprocess.CalledProcessError as e:
             utils.log(f"Azure CLI is not logged in. Please log in before proceeding. {e}", const.AZURE_PROVIDER)
+            return False
         else:
-            terraform_init(const.AZURE_PROVIDER, credentials_file)
+            return terraform_init(const.AZURE_PROVIDER, credentials_file)
 
 
-def gcp_init():
+def gcp_init() -> bool:
     credentials_file = os.path.expanduser(const.GCP_PROFILE_FILE)
 
     try:
@@ -103,13 +108,14 @@ def gcp_init():
     except subprocess.CalledProcessError as e:
         utils.log(f"Google Cloud CLI is not installed or configured. Please install and configure it before proceeding. {e}", const.GCP_PROVIDER)
         utils.log(e.output, const.GCP_PROVIDER)
+        return False
     else:
-        terraform_init(const.GCP_PROVIDER, credentials_file)
+        return terraform_init(const.GCP_PROVIDER, credentials_file)
 
 
 @cli.command()
 @click.argument('providers', nargs=-1, type=click.Choice([const.AWS_PROVIDER, const.AZURE_PROVIDER, const.GCP_PROVIDER]), required=False)
-def init(providers):
+def init(providers) -> bool:
     """
     Initializes the credentials needed for the supported cloud providers and Terraform.
     It saves the credentials in the 'credentials' directory and init logs in the 'logs' directory.
@@ -117,15 +123,15 @@ def init(providers):
 
     # Init cloud providers
     if not providers or const.AWS_PROVIDER in providers:
-        aws_init()
+        result = aws_init()
     if not providers or const.AZURE_PROVIDER in providers:
-        azure_init()
+        result = azure_init()
     if not providers or const.GCP_PROVIDER in providers:
-        gcp_init()
-    return
+        result = gcp_init()
+    return result
 
 
-def extract_default_value(config_file, section, key):
+def extract_default_value(config_file: str, section: str, key: str) -> str:
 
     # Extracts the default section[key] value from the config file or throw an error if it does not exist
     if not os.path.isfile(config_file):
@@ -147,7 +153,7 @@ def extract_default_value(config_file, section, key):
         return
 
 
-def create_eks(cluster_name, region, wait):
+def create_eks(cluster_name: str, region: str, wait: bool) -> bool:
 
     # Extracting the default region from the AWS config file in case it is not set
     if not region:
@@ -163,9 +169,10 @@ def create_eks(cluster_name, region, wait):
     utils.execute_command('terraform apply -auto-approve', aws_logs_file, wait)
     os.chdir(script_dir)
     utils.log(f"EKS Cluster {cluster_name} has been successfully created in {region}.", const.AWS_PROVIDER)
+    return True
 
 
-def create_aks(cluster_name, region, resource_group, wait):
+def create_aks(cluster_name: str, region: str, resource_group: str, wait: bool) -> bool:
 
     # Extracting the default region and resource group from the Azure config file in case they are not set
     if not region:
@@ -184,9 +191,10 @@ def create_aks(cluster_name, region, resource_group, wait):
     utils.execute_command('terraform apply -auto-approve', azure_logs_file, wait)
     os.chdir(script_dir)
     utils.log(f"AKS Cluster {cluster_name} has been successfully created in {region}.", const.AZURE_PROVIDER)
+    return True
 
 
-def create_gke(cluster_name, region, project, wait):
+def create_gke(cluster_name: str, region: str, project: str, wait: bool) -> bool:
 
     # Extracting the default region and project from the GCP config file in case they are not set
     if not region:
@@ -205,9 +213,10 @@ def create_gke(cluster_name, region, project, wait):
     utils.execute_command('terraform apply -auto-approve', gcp_logs_file, wait)
     os.chdir(script_dir)
     utils.log(f"GKE Cluster {cluster_name} has been successfully created in {region}.", const.GCP_PROVIDER)
+    return True
 
 
-def get_cluster_info(cluster_name):
+def get_cluster_info(cluster_name: str) -> str:
     # Getting cluster info from the YAML file if exists
     cluster_file_path = f'{const.CLUSTERS_DIR}/{cluster_name}_cluster.yaml'
     if not os.path.isfile(cluster_file_path):
@@ -220,18 +229,33 @@ def get_cluster_info(cluster_name):
         return None
     return cluster_info
 
-def save_cluster_info(cluster_name, provider, region, resource_group, project, credential_file, products=None):
+def save_cluster_info(cluster_name: str, provider: str, region: str, resource_group: str, project: str,
+                      credential_file: str, products=None):
 
-    # Define the cluster information dictionary
-    cluster_info = {
-        "name": cluster_name,
-        "provider": provider,
-        "region": region,
-        "credential_file": f"{const.CREDENTIALS_DIR}/{credential_file}",
-        "resource_group": resource_group,
-        "project": project,
-        "products": products
-    }
+    # Updating the cluster info if it already exists
+    current = get_cluster_info(cluster_name)
+    if current:
+        cluster_info = {
+            # Updating the info if it is not None
+            "name": current.get("name") if cluster_name is None else cluster_name,
+            "provider": current.get("provider") if provider is None else provider,
+            "region": current.get("region") if region is None else region,
+            "credential_file": current.get("credential_file") if credential_file is None else credential_file,
+            "resource_group": current.get("resource_group") if resource_group is None else resource_group,
+            "project": current.get("project") if project is None else project,
+            "products": current.get("products") if products is None else products
+        }
+    else:
+        # Define the cluster information dictionary
+        cluster_info = {
+            "name": cluster_name,
+            "provider": provider,
+            "region": region,
+            "credential_file": f"{const.CREDENTIALS_DIR}/{credential_file}",
+            "resource_group": resource_group,
+            "project": project,
+            "products": products
+        }
 
     # Define the file name based on the cluster name
     file_name = f"{const.CLUSTERS_DIR}/{cluster_name}_cluster.yaml"
@@ -251,7 +275,7 @@ def save_cluster_info(cluster_name, provider, region, resource_group, project, c
 @click.option('--resource-group', '-g', type=click.STRING, help='Resource group name (required for Azure)', metavar='<resource_group>')
 @click.option('--project', '-p', type=click.STRING, help='Project ID (required for GCP)', metavar='<project_id>')
 @click.option('--wait', '-w', is_flag=True, default=False, showDefault=True, help='wait for commands completion or not')
-def create(type, cluster_name, provider, region, resource_group, project, wait):
+def create(type: str, cluster_name: str, provider: str, region: str, resource_group: str, project: str, wait: bool) -> bool:
     """
     Creates a k8s cluster in the specified cloud provider.
 
@@ -268,31 +292,31 @@ def create(type, cluster_name, provider, region, resource_group, project, wait):
             utils.check_parameters(name=cluster_name, provider=provider, region=region)
             # Check if the cluster already exists
             if len(search_clusters(cluster_name, provider)) > 0:
-                utils.log(f"Cluster {cluster_name} already exists, name must be unieuq. Please use a different name.")
-                return
+                utils.log(f"Cluster {cluster_name} already exists, name must be unique. Please use a different name.")
+                return False
             # Creating clusters
             if provider == const.AWS_PROVIDER:
-                create_eks(cluster_name, region, wait)
+                result = create_eks(cluster_name, region, wait)
             if provider == const.AZURE_PROVIDER:
                 utils.check_parameters(resource_group=resource_group)
-                create_aks(cluster_name, region, resource_group, wait)
+                result = create_aks(cluster_name, region, resource_group, wait)
             if provider == const.GCP_PROVIDER:
                 utils.check_parameters(project=project)
-                create_gke(cluster_name, region, project, wait)
+                result = create_gke(cluster_name, region, project, wait)
             else:
                 utils.log(const.UNSUPPORTED_PROVIDER_MSG)
-                return
+                return False
             # Save cluster info
             save_cluster_info(cluster_name, provider, region, resource_group, project, f"{provider}_kube_credential")
             utils.log(f"Cluster {cluster_name} has been successfully created.", provider)
-            return
+            return result
         # Default case
         case _:
             utils.log(const.UNSUPPORTED_TYPE_MSG)
-            return
+            return False
 
 
-def search_clusters(name, provider):
+def search_clusters(name: str, provider: str) -> list:
     # Search for clusters based on the name and provider
     clusters = []
     for file in os.listdir(const.CLUSTERS_DIR):
@@ -310,9 +334,9 @@ def search_clusters(name, provider):
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--provider', '-p', required=False, type=click.Choice([const.AWS_PROVIDER, const.AZURE_PROVIDER, const.GCP_PROVIDER]), help='Provider filter', metavar='<provider>')
 @click.option('--name', '-n', type=click.STRING, required=False, help='Name filter for resource', metavar='<name>')
-def list(type, provider, name):
+def show(type: str, provider: str, name: str) -> list:
     """
-    Lists resources available and connected to the kubelab cli.
+    Shows resources available and connected to the kubelab cli.
 
     :param type: the resource type to be listed
     :param provider: the cloud provider to be used for filtering (optional)
@@ -326,12 +350,12 @@ def list(type, provider, name):
                 utils.log("No clusters found.")
             else:
                 utils.log(f"{clusters}")
-            return
+            return clusters
         case _:
             utils.log(const.UNSUPPORTED_TYPE_MSG)
-            return
+            return None
 
-def switch_to_cluster(name, provider, region, resource_group, project):
+def switch_to_cluster(name: str, provider: str, region: str, resource_group: str, project: str) -> bool:
     utils.check_parameters(name=name, provider=provider)
     # Update the Kubernetes configuration based on the cluster's cloud provider
     if provider == const.AWS_PROVIDER:
@@ -345,10 +369,10 @@ def switch_to_cluster(name, provider, region, resource_group, project):
         update_kubeconfig_cmd = f"gcloud container clusters get-credentials {name} --region {region} --project {project}"
     else:
         utils.log(const.UNSUPPORTED_PROVIDER_MSG)
-        return
+        return False
     utils.execute_command(update_kubeconfig_cmd, generic_logs_file, wait=True)
     utils.log(f"Kubernetes configuration updated for {name} cluster.", provider)
-    return
+    return True
 
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
@@ -357,7 +381,7 @@ def switch_to_cluster(name, provider, region, resource_group, project):
 @click.option('--region', '-r', required=False, type=click.STRING, help='Resource region', metavar='<region>')
 @click.option('--resource-group', '-g', required=False, type=click.STRING, help='Resource group name', metavar='<resource_group>')
 @click.option('--project', '-p', required=False, type=click.STRING, help='Project ID', metavar='<project_id>')
-def use(type, name, provider, region, resource_group, project):
+def use(type: str, name: str, provider: str, region: str, resource_group: str, project: str) -> bool:
     """
     Select a resource to switch to, it can be pre-existing or created with the kubelab cli.
 
@@ -367,6 +391,7 @@ def use(type, name, provider, region, resource_group, project):
     :param region: the region of the resource
     :param resource_group: the resource group of the cluster (Azure)
     :param project: the GCP project of the cluster (GCP)
+    :return: True if the resource was switched to successfully, False otherwise
     """
     match type:
         case 'cluster':
@@ -374,10 +399,10 @@ def use(type, name, provider, region, resource_group, project):
             cluster_info = get_cluster_info(name)
             if not cluster_info:
                 utils.log(f"Cluster {name} is not managed by the kubelab-cli. Trying to use it via provided parameters...")
-                switch_to_cluster(name, provider, region, resource_group, project)
+                result = switch_to_cluster(name, provider, region, resource_group, project)
                 # Save cluster info since it is not managed by the kubelab-cli, next time it will be used via the saved info
                 save_cluster_info(name, provider, region, resource_group, project, f"{provider}_kube_credential")
-                return
+                return result
             # Extract cluster information from file in case it exists
             cluster_name = cluster_info.get('name')
             cluster_provider = cluster_info.get('provider')
@@ -385,14 +410,14 @@ def use(type, name, provider, region, resource_group, project):
             cluster_resource_group = cluster_info.get('resource_group')
             cluster_project = cluster_info.get('project')
             # Switches to cluster
-            switch_to_cluster(cluster_name, cluster_provider, cluster_region, cluster_resource_group, cluster_project)
-            return
+            result = switch_to_cluster(cluster_name, cluster_provider, cluster_region, cluster_resource_group, cluster_project)
+            return result
         case _:
             utils.log(const.UNSUPPORTED_TYPE_MSG)
-            return
+            return False
 
 
-def destroy_eks(name, region):
+def destroy_eks(name: str, region: str) -> bool:
     utils.log(f"You have selected to destroy cluster: {name} that is located in: {region}", const.AWS_PROVIDER)
     utils.execute_command(f"aws eks describe-cluster --name {name} --region {region}", aws_logs_file, wait=True)
     # Deleting nodegroups via aws cli
@@ -415,8 +440,9 @@ def destroy_eks(name, region):
     utils.execute_command(f'terraform destroy -auto-approve -var="cluster_name={name}" -var="region={region}"', aws_logs_file, wait=True)
     utils.log("The rest of the resources were also destroyed...", const.AWS_PROVIDER)
     os.chdir(script_dir)
+    return True
 
-def destroy_aks(name, region, resource_group):
+def destroy_aks(name: str, region: str, resource_group: str) -> bool:
     utils.log(f"You have selected to destroy cluster: {resource_group}.{name} that is located in: {region}", const.AZURE_PROVIDER)
     utils.execute_command(f"az aks show -n {name} -g {resource_group} --query provisioningState --output tsv", azure_logs_file, wait=True)
     # Deleting nodepools via az
@@ -447,8 +473,9 @@ def destroy_aks(name, region, resource_group):
     )
     utils.log("The rest of the resources were also destroyed...", const.AZURE_PROVIDER)
     os.chdir(script_dir)
+    return True
 
-def destroy_gke(name, region, project, yes):
+def destroy_gke(name: str, region: str, project: str) -> bool:
     utils.log(f"You have selected to destroy cluster: {project}.{name} that is located in: {region}", const.GCP_PROVIDER)
     utils.execute_command(f"gcloud container clusters describe {name} --region {region} --project {project}", gcp_logs_file, wait=True)
     # Deleting nodes via gcloud
@@ -471,6 +498,7 @@ def destroy_gke(name, region, project, yes):
     )
     utils.log("The rest of the resources were also destroyed...", const.GCP_PROVIDER)
     os.chdir(script_dir)
+    return True
 
 
 @cli.command()
@@ -479,7 +507,7 @@ def destroy_gke(name, region, project, yes):
 @click.option('--region', required=True, type=click.STRING, help='Location of the resource', metavar='<region>')
 @click.option('--interactive', '-i', is_flag=True, help='Shows a list of resources to choose from')
 @click.option('--yes', '-y', is_flag=True, help='Skip all prompts and proceed with destruction in quiet mode.')
-def destroy(type, name, region, interactive, yes):
+def destroy(type: str, name: str, region: str, interactive: bool, yes: bool) -> bool:
     """
     Destroys a resource in the specified cloud provider.
 
@@ -487,6 +515,7 @@ def destroy(type, name, region, interactive, yes):
     :param name: the name of the resource to be destroyed
     :param region: the region where the resource will be destroyed
     :param yes: flag to automatically answer "yes" to all prompts and proceed with destruction
+    :return: True if the resource was destroyed successfully, False otherwise
     """
     match type:
         case 'cluster':
@@ -495,7 +524,7 @@ def destroy(type, name, region, interactive, yes):
                 clusters = search_clusters(None, None)
                 if not clusters:
                     utils.log("No clusters found.")
-                    return
+                    return False
 
                 print("Select a cluster to delete:")
                 for i, cluster in enumerate(clusters, start=1):
@@ -508,7 +537,7 @@ def destroy(type, name, region, interactive, yes):
                     cluster_region = selected_cluster['region']
                 except (ValueError, IndexError):
                     utils.log("Invalid selection. Aborting.")
-                    return
+                    return False
             else:
                 utils.check_parameters(name=name, region=region)
                 # Use provided parameters
@@ -518,7 +547,7 @@ def destroy(type, name, region, interactive, yes):
                 # If not in quiet mode, ask for confirmation and in case of positive answer, proceed with destruction
                 if not click.confirm("Are you sure you want to destroy the cluster? This operation will also destroy all the resources associated with it. Type 'yes' or 'y' to confirm."):
                     utils.log("Cluster destruction has been cancelled.")
-                    return
+                    return False
             cluster_info = get_cluster_info(cluster_name)
             # Extract cluster information
             cluster_name = cluster_info.get('name')
@@ -532,30 +561,47 @@ def destroy(type, name, region, interactive, yes):
                 return
             # Destroying clusters
             if provider == const.AWS_PROVIDER:
-                destroy_eks(cluster_name, cluster_region)
+                result = destroy_eks(cluster_name, cluster_region)
             if provider == const.AZURE_PROVIDER:
-                destroy_aks(cluster_name, cluster_region, resource_group)
+                result = destroy_aks(cluster_name, cluster_region, resource_group)
             if provider == const.GCP_PROVIDER:
-                destroy_gke(cluster_name, cluster_region, project)
+                result = destroy_gke(cluster_name, cluster_region, project)
             else:
                 utils.log(const.UNSUPPORTED_PROVIDER_MSG)
-                return
+                return False
             # Deleting cluster info file
             os.remove(f"{const.CLUSTERS_DIR}/{cluster_name}_cluster.yaml")
             utils.log(f"Cluster {cluster_name} has been successfully deleted along with its config file.", provider)
-            return
+            return result
         # Default case
         case _:
             utils.log(const.UNSUPPORTED_TYPE_MSG)
-            return
+            return False
 
+
+def search_products(cluster_name: str, product=None) -> list:
+    # Find the products based on cluster_name
+    products = get_cluster_info(cluster_name).get('products')
+
+    if product is None:
+        # If product is not specified, return all products as an array
+        return products
+    else:
+        # If product is specified, find the matching product and return it as a single object
+        for product in products:
+            if product.get("name"):
+                return product
+
+        # If no matching product is found, return None
+        return None
 
 @cli.command()
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
+@click.option('--cluster', '-c', required=True, help='Name of the cluster to be used', metavar='<resource_name>')
 @click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.option('--version', type=click.STRING, help="product version", required=False)
 @click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed.')
-def add(type, product, version, yes):
+def add(cluster: str, type: str, product: str, version: str, yes: bool):
     """
     Adds a product in the current cluster.
 
@@ -564,6 +610,12 @@ def add(type, product, version, yes):
     :param version: the desired version of the product to be added
     :param yes: flag to automatically answer "yes" to all prompts and proceed
     """
+    utils.check_parameters(product=product)
+    installed_products = search_products(cluster)
+    # Check if the product is already installed on the cluster
+    if installed_products.get(product):
+        utils.log(f"Product {product} is already installed. Please use update to manage it.")
+        return
 
     return
 

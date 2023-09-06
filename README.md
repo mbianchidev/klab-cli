@@ -72,12 +72,7 @@ lab [command] [options]
 
 - To create a Kubernetes cluster:
   ```bash
-  lab create cluster --provider [aws|azure|gcp] --name [cluster_name]
-  ```
-
-- To update a Kubernetes cluster (e.g., change node count, update version, etc.):
-  ```bash
-  lab update cluster --name [cluster_name] --[option1]=[value1] --[option2]=[value2] ...
+  lab create cluster --provider [AWS|Azure|GCP] --name [cluster_name]
   ```
 
 - To destroy a Kubernetes cluster:
@@ -89,22 +84,12 @@ lab [command] [options]
 
 - To deploy a product (e.g., NGINX) using default settings:
   ```bash
-  lab use cluster [cluster_name] # a bit like kubectl use-context
-  lab add nginx --type [deployment|operator]
-  ```
-  or
-  ```bash
   lab add [product_name] --cluster [cluster_name] --type [deployment|operator]
-  ```
-
-- To deploy a product with custom configurations:
-  ```bash
-  lab add [product_name] --cluster [cluster_name] --method [deployment|operator|] --config [path_to_config_file]
   ```
 
 - To update a deployed product:
   ```bash
-  lab update [product_name] --version [new version] --cluster [cluster_name] (--method [deployment|operator]) --config [path_to_updated_config_file]
+  lab update [product_name] --version [new version] --cluster [cluster_name] (--type [deployment|operator])
   ```
 
 - To remove a deployed product from the cluster:
@@ -127,11 +112,11 @@ provider: aws
 region: us-east-1
 credential_file: ~/.aws/credentials
 products:
-  - nginx:
-      type: operator
-      version: 1.0.0
-      replicas: 2
-      port: 80
+  - name: nginx
+    type: operator
+    version: 1.0.0
+    replicas: 2
+    port: 80
 ```
 
 ### Example Configuration (catalog.yaml)
