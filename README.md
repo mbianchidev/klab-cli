@@ -1,6 +1,8 @@
 # kubelab-cli - Kubernetes utility CLI by KubeLab
 
-kubelab-cli is a command line tool that empowers developers to effortlessly create, manage, and destroy Kubernetes clusters on popular cloud providers such as AWS, Azure, and GCP, obtaining Terraform code and easy yaml configs in return.
+TODO: find a cool image to use here
+
+kubelab-cli is a command line tool, built in python, that empowers developers to effortlessly create, manage, and destroy Kubernetes clusters on popular cloud providers such as AWS, Azure, and GCP, obtaining Terraform code and easy yaml configs in return.
 
 Additionally, it enables users to easily manage products on top of the clusters, such as NGINX, and deploy them using your own configuration as deployments, operators, CRDs...
 
@@ -22,6 +24,7 @@ Additionally, it enables users to easily manage products on top of the clusters,
 
 Before using kubelab-cli, ensure you have the following dependencies installed on your system:
 
+- Python 3.11.x
 - Kubernetes CLI (kubectl)
 - AWS CLI (if using AWS as a cloud provider)
 - Azure CLI (if using Azure as a cloud provider)
@@ -51,9 +54,9 @@ Add into your .vscode/settings.json
 
 ## Other means of installation
 
-1. Download the kubelab-cli binary for your operating system from the official GitHub repository, then place the repo in a directory you like, use it via python execution or add it to your PATH.
+A. Download the kubelab-cli binary for your operating system from the official GitHub repository, then place the repo in a directory you like, use it via python execution or add it to your PATH.
 
-2. Install it via pip:
+B. Install it via pip:
 
 ```bash
 pip install kubelab-cli
@@ -82,12 +85,12 @@ lab [command] [options]
   lab destroy cluster --name [cluster_name]
   ```
 
-### Product Management
+### Cloud Native Products
 
 - To deploy a product (e.g., NGINX) using default settings:
   ```bash
   lab use cluster [cluster_name] # a bit like kubectl use-context
-  lab add [product_name] --cluster [cluster_name] --type [deployment|operator]
+  lab add nginx --type [deployment|operator]
   ```
   or
   ```bash
@@ -112,6 +115,8 @@ lab [command] [options]
 ## Configuration
 
 kubelab-cli uses configuration files to define cluster and product settings. By default, it looks for config files in the `catalog/` and `clusters/` directory.
+As for the `providers/` folder it is used to store the terraform code for each cloud provider.
+We have set up a structure for you to follow on IaC code, but you can customize and extend it to your liking, be aware that the code requires variables in order to be as generic as possible.
 
 ### Example Configuration (cluster_sample.yaml)
 
@@ -180,7 +185,7 @@ Thank you for using kubelab-cli! If you have any questions or need further assis
 
 ## Documentation
 
-The kubelab-cli documentation can be found [here](https://kubelab.cloud/doc).
+The kubelab-cli documentation can be found [here](https://kubelab.cloud/doc). (coming soon)
 
 ## Security
 
