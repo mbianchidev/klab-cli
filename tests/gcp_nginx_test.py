@@ -67,7 +67,7 @@ class TestGCPNginx:
             time.sleep(10)
         else:
             print("Load balancer information not available yet.")
-        
+
         assert result.returncode == 0
 
     def test_gcp_update_nginx_deployment(self):
