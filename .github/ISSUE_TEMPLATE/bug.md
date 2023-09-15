@@ -1,6 +1,6 @@
 ---
 name: Bug
-about: Create a report to help us improve kubelab-cli
+about: Create a report to help us improve klab-cli
 title: "[Bug]"
 labels: bug
 assignees: mbianchidev

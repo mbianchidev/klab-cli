@@ -1,5 +1,5 @@
 locals {
-  credentials_file = file("../kubelab-cli/credentials/azure_kube_credential")
+  credentials_file = file("../klab-cli/credentials/azure_kube_credential")
   credentials      = jsondecode(local.credentials_file)
 }
 

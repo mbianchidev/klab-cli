@@ -458,12 +458,12 @@ if ! check_command "cnquery"; then
     bash -c "$(curl -sSL https://install.mondoo.com/sh)"
 fi
 
-pip install kubelab-cli
+pip install klab-cli
 
 # Change back to the original directory
 cd $CURRENT_DIR
 
-echo "All required tools are installed. Thanks for choosing kubelab-cli!"
+echo "All required tools are installed. Thanks for choosing klab-cli!"
 
 echo "  _______     _______     _______"
 echo " /      /\\   /      /\\   /      /\\"
@@ -471,12 +471,12 @@ echo "/______/  \\ /______/  \\ /______/  \\"
 echo "\\      \\  / \\      \\  / \\      \\  /"
 echo " \\______\\/   \\______\\/   \\______\\/"
 echo "           "   
-echo " __  ___  __    __  .______    _______  __           ___      .______             ______  __       __ "
-echo "|  |/  / |  |  |  | |   _  \  |   ____||  |         /   \     |   _  \           /      ||  |     |  |"
-echo "|  '  /  |  |  |  | |  |_)  | |  |__   |  |        /  ^  \    |  |_)  |  ______ |  ,----'|  |     |  |"
-echo "|    <   |  |  |  | |   _  <  |   __|  |  |       /  /_\  \   |   _  <  |______||  |     |  |     |  |"
-echo "|  .  \  |  '--'  | |  |_)  | |  |____ |  '----. /  _____  \  |  |_)  |         |  '----.|  '----.|  |"
-echo "|__|\__\  \______/  |______/  |_______||_______|/__/     \__\ |______/           \______||_______||__|"
+echo " __  ___  __           ___      .______             ______  __       __ "
+echo "|  |/  / |  |         /   \     |   _  \           /      ||  |     |  |"
+echo "|  '  /  |  |        /  ^  \    |  |_)  |  ______ |  ,----'|  |     |  |"
+echo "|    <   |  |       /  /_\  \   |   _  <  |______||  |     |  |     |  |"
+echo "|  .  \  |  '----. /  _____  \  |  |_)  |         |  '----.|  '----.|  |"
+echo "|__|\__\ |_______|/__/     \__\ |______/           \______||_______||__|"
 echo "  _______     _______     _______"
 echo " /      /\\   /      /\\   /      /\\"
 echo "/______/  \\ /______/  \\ /______/  \\"

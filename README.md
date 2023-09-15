@@ -1,8 +1,8 @@
-# kubelab-cli - Kubernetes utility CLI by KubeLab
+# Klab-cli - Kubernetes utility CLI
 
 TODO: find a cool image to use here
 
-kubelab-cli is a command line tool, built in python, that empowers developers to effortlessly create, manage, and destroy Kubernetes clusters on popular cloud providers such as AWS, Azure, and GCP, obtaining Terraform code and easy yaml configs in return.
+Klab-cli is a command line tool, built in python, that empowers developers to effortlessly create, manage, and destroy Kubernetes clusters on popular cloud providers such as AWS, Azure, and GCP, obtaining Terraform code and easy yaml configs in return.
 
 Additionally, it enables users to easily manage products on top of the clusters, such as NGINX, and deploy them using your own configuration as deployments, operators, CRDs...
 
@@ -12,17 +12,17 @@ Additionally, it enables users to easily manage products on top of the clusters,
 
 - **Product Management:** Seamlessly manage products like NGINX on top of your Kubernetes clusters using different deployment strategies, including deployment, operator, Helm, and Kustomize.
 
-- **Deployment Flexibility:** kubelab-cli provides multiple options for your deployment to cater to different use cases and preferences.
+- **Deployment Flexibility:** klab-cli provides multiple options for your deployment to cater to different use cases and preferences.
 
 - **Automated Setup:** The tool automates the setup process for all the cloud-specific tools you need to manage Kubernetes clusters, saving you time and effort.
 
 - **Easy Configuration:** Intuitive YAML configuration that allow you to customize the clusters and products according to your specific needs.
 
-- **Clear Documentation:** Comprehensive documentation to guide you through the installation, setup, and usage of the kubelab-cli tool (coming soon).
+- **Clear Documentation:** Comprehensive documentation to guide you through the installation, setup, and usage of the klab-cli tool (coming soon).
 
 ## Prerequisites
 
-Before using kubelab-cli, ensure you have the following dependencies installed on your system:
+Before using klab-cli, ensure you have the following dependencies installed on your system:
 
 - Python 3.11.x
 - Kubernetes CLI (kubectl)
@@ -31,7 +31,7 @@ Before using kubelab-cli, ensure you have the following dependencies installed o
 - Google Cloud CLI (if using GCP as a cloud provider)
 - Terraform CLI
 
-Or you can use the kubelab-cli install script to install all the dependencies for you.
+Or you can use the klab-cli install script to install all the dependencies for you.
 Run the following command to install the dependencies and the cli itself:
 
 ```bash
@@ -54,12 +54,12 @@ Add into your .vscode/settings.json
 
 ## Other means of installation
 
-A. Download the kubelab-cli binary for your operating system from the official GitHub repository, then place the repo in a directory you like, use it via python execution or add it to your PATH.
+A. Download the klab-cli binary for your operating system from the official GitHub repository, then place the repo in a directory you like, use it via python execution or add it to your PATH.
 
 B. Install it via pip:
 
 ```bash
-pip install kubelab-cli
+pip install klab-cli
 ```
 
 ## Usage
@@ -99,7 +99,7 @@ lab [command] [options]
 
 ## Configuration
 
-kubelab-cli uses configuration files to define cluster and product settings. By default, it looks for config files in the `catalog/` and `clusters/` directory.
+klab-cli uses configuration files to define cluster and product settings. By default, it looks for config files in the `catalog/` and `clusters/` directory.
 As for the `providers/` folder it is used to store the terraform code for each cloud provider.
 We have set up a structure for you to follow on IaC code, but you can customize and extend it to your liking, be aware that the code requires variables in order to be as generic as possible.
 
@@ -158,19 +158,19 @@ If you encounter any issues or have suggestions for improvement, please check th
 
 ## License
 
-kubelab-cli is open-source software licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute it according to the terms of the license.
+klab-cli is open-source software licensed under the [MIT License](LICENSE). Feel free to use, modify, and distribute it according to the terms of the license.
 
 ---
 
-Thank you for using kubelab-cli! If you have any questions or need further assistance, please refer to the documentation or reach out to the [Discord community of KubeLab](https://discord.gg/aVEhdDDark) for support.
+Thank you for using klab-cli! If you have any questions or need further assistance, please refer to the documentation or reach out to the [Discord community of KubeLab](https://discord.gg/aVEhdDDark) for support.
 
-## Other OSS tools embedded or used in kubelab-cli
+## Other OSS tools embedded or used in klab-cli
 - https://github.com/mondoohq/cnquery
 - https://github.com/derailed/k9s
 
 ## Documentation
 
-The kubelab-cli documentation can be found [here](https://kubelab.cloud/doc). (coming soon)
+Documentation can be found [here](https://mb-consulting.dev/doc). (coming soon)
 
 ## Security
 
