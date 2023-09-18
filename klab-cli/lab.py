@@ -14,9 +14,19 @@ from datetime import datetime
 def cli():
     pass
 
+def log_message(log_file, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"[{timestamp}] {message}\n"
+    with open(log_file, 'a') as log_file:
+        log_file.write(log_entry)
 
 @cli.command()
 def init():
+    """
+    Initializes the credentials needed for the supported cloud providers and Terraform.
+    It saves the credentials in the 'credentials' directory and the logs in the 'logs' directory.
+    Usage: lab init
+    """
     script_dir = os.path.dirname(os.path.realpath(__file__))
     credentials_dir = os.path.join(script_dir, 'credentials')
     os.makedirs(credentials_dir, exist_ok=True)
@@ -24,12 +34,6 @@ def init():
     # Create logs directory
     logs_dir = os.path.join(script_dir, 'logs')
     os.makedirs(logs_dir, exist_ok=True)
-
-    def log_message(log_file, message):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"[{timestamp}] {message}\n"
-        with open(log_file, 'a') as log_file:
-            log_file.write(log_entry)
 
     # AWS
     aws_credentials_file = os.path.expanduser('~/.aws/credentials')
@@ -50,7 +54,7 @@ def init():
                 aws_logs_file = os.path.join(logs_dir, 'aws_terraform_init.log')
                 log_message(aws_logs_file, "AWS credentials saved.")
                 print("Initializing Terraform for AWS...\n")
-                os.chdir('../AWS')
+                os.chdir('../providers/AWS')
                 process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
                 stderr_output = process.communicate()
                 exit_code = process.wait()
@@ -87,7 +91,7 @@ def init():
             azure_logs_file = os.path.join(logs_dir, 'azure_terraform_init.log')
             log_message(azure_logs_file, "Azure credentials saved.")
             print("Initializing Terraform for Azure...")
-            os.chdir('../Azure')
+            os.chdir('../providers/Azure')
             process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
             stdout_output, stderr_output = process.communicate()
             exit_code = process.wait()
@@ -112,7 +116,7 @@ def init():
         gcp_logs_file = os.path.join(logs_dir, 'gcp_terraform_init.log')
         log_message(gcp_logs_file, "Gcloud credentials saved.")
         print("Initializing Terraform for Google Cloud...")
-        os.chdir('../GCP')
+        os.chdir('../providers/GCP')
         process = subprocess.Popen(['terraform', 'init'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stderr_output = process.communicate()
         exit_code = process.wait()
@@ -129,14 +133,7 @@ def init():
         log_message(gcp_logs_file, "gcloud CLI is not installed or configured.")
 
 
-def log(command, log_file_path, wait_for_completion=True):
-    """
-    Run a command and optionally wait for its completion.
-
-    :param command: The command to execute.
-    :param log_file_path: The path to the log file to store the command output.
-    :param wait_for_completion: If True, wait for the process to complete; otherwise, run it in the background.
-    """
+def wait_for_exe(command, log_file_path, wait_for_completion=True):
     with open(log_file_path, 'w') as log_file:
         process = subprocess.Popen(
             command,
@@ -171,6 +168,16 @@ def create_log_directory_and_file(log_file_path):
 @click.option('--resource-group', '-rg', type=str, help='Resource group name (required for Azure)', metavar='<resource_group>')
 @click.option('--project', '-p', type=str, help='GCP project ID (required for GCP)', metavar='<project_id>')
 def create(type, cluster_name, provider, region, resource_group, project):
+    """
+    Creates a k8s cluster in the specified cloud provider.
+
+    :param type: the resource to be created
+    :param cluster_name: the name of the cluster to be created (otional)
+    :param provider: the cloud provider to be used
+    :param region: the region where the resource will be created
+    :param resource_group: the resource group where the resource will be created (optional)
+    :param project: the GCP project ID where the resource will be created (optional)
+    """
     if type != 'cluster':
         click.echo("Invalid type specified. Only 'cluster' is supported.")
         return
@@ -186,21 +193,21 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 region = "eu-west-2"
                 click.echo(f"No region set, default region: {region} will be used.")
 
-            os.chdir('../AWS')
+            os.chdir('../providers/AWS')
 
             log_file_path = 'log/kubelab.log'
 
             create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
-            log(
+            wait_for_exe(
                 f'terraform plan -var="cluster_name={cluster_name}" -var="region={region}"',
                 log_file_path
             )
 
             click.echo("Terraform plan was completed successfully!")
 
-            log(
+            wait_for_exe(
                 f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}"',
                 log_file_path,
                 wait_for_completion=False
@@ -221,21 +228,21 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 region = "eastus"
                 click.echo(f"No region set, default region: {region} will be used.")
 
-            os.chdir('../Azure')
+            os.chdir('../providers/Azure')
 
             log_file_path = 'log/kubelab.log'
 
             create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
-            log(
+            wait_for_exe(
                 f'terraform plan -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}"',
                 log_file_path
             )
 
             click.echo("Terraform plan was completed successfully!")
 
-            log(
+            wait_for_exe(
                 f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="resource_group={resource_group}" -var="location={region}"',
                 log_file_path,
                 wait_for_completion=False
@@ -257,14 +264,14 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 click.echo("Make sure to add --project <project-id> or -p <project-id> option.")
                 return
 
-            os.chdir('../GCP')
+            os.chdir('../providers/GCP')
 
             log_file_path = 'log/kubelab.log'
 
             create_log_directory_and_file(log_file_path)
 
             click.echo("Running terraform plan to check the input parameters and Terraform configuration.")
-            log(
+            wait_for_exe(
                 f'terraform plan -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}"',
                 log_file_path
             )
@@ -274,7 +281,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
 
             click.echo("Terraform plan was completed successfully!")
 
-            log(
+            wait_for_exe(
                 f'terraform apply -auto-approve -var="cluster_name={cluster_name}" -var="region={region}" -var="project={project}"',
                 log_file_path,
                 wait_for_completion=False
@@ -287,8 +294,6 @@ def create(type, cluster_name, provider, region, resource_group, project):
             click.echo("Make sure to add --provider <cloud-provider> or -pr <cloud-provider> option.")
             return
 
-        os.chdir('../kubelab-cli')
-
         # Create cluster_credentials directory if it doesn't exist
         credentials_dir = 'cluster_credentials'
         if not os.path.exists(credentials_dir):
@@ -299,7 +304,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
 
         # Retrieve the credentials file path based on the cloud provider
         if provider == "AWS":
-            credentials_file = os.path.join('credentials', 'aws_kube_credential')
+            credentials_file = os.path.join(credentials_dir, 'aws_kube_credentials')
 
             cluster_info = {
                 'cluster_credentials': credentials_file,
@@ -308,7 +313,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 'cluster_region': region
             }
         elif provider == "Azure":
-            credentials_file = os.path.join('credentials', 'azure_kube_credential')
+            credentials_file = os.path.join(credentials_dir, 'azure_kube_credentials')
 
             cluster_info = {
                 'cluster_credentials': credentials_file,
@@ -318,7 +323,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 'cluster_resource_group': resource_group
             }
         elif provider == "GCP":
-            credentials_file = os.path.join('credentials', 'gcp_kube_credential')
+            credentials_file = os.path.join(credentials_dir, 'gcp_kube_credentials')
 
             cluster_info = {
                 'cluster_credentials': credentials_file,
@@ -328,8 +333,8 @@ def create(type, cluster_name, provider, region, resource_group, project):
                 'cluster_project': project
             }
 
-        # Check if the cluster name, provider, and region already exist in cluster.yaml
-        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+        # Check if the cluster name, provider, and region already exist in clusters.yaml
+        yaml_file_path = os.path.join(credentials_dir, 'clusters.yaml')
         existing_clusters = []
         if os.path.exists(yaml_file_path):
             with open(yaml_file_path, 'r') as yaml_file:
@@ -339,7 +344,7 @@ def create(type, cluster_name, provider, region, resource_group, project):
         existing_clusters_set = {(cluster['cluster_name'], cluster['cluster_provider'], cluster.get('cluster_region', '')) for cluster in existing_clusters}
 
         if (cluster_name, provider, region) in existing_clusters_set:
-            print(f"The cluster with name '{cluster_name}', provider '{provider}', and region '{region}' already exists in cluster.yaml. Skipping append.")
+            print(f"The cluster with name '{cluster_name}', provider '{provider}', and region '{region}' already exists in clusters.yaml. Skipping append.")
         else:
             existing_clusters.append(cluster_info)
             with open(yaml_file_path, 'w') as yaml_file:
@@ -354,14 +359,21 @@ def create(type, cluster_name, provider, region, resource_group, project):
 @cli.command()
 @click.argument('type', type=click.Choice(['cluster']))
 @click.option('--provider', type=click.Choice(['AWS', 'Azure', 'GCP']), help='Filter clusters by provider')
-@click.option('--name', help='Filter clusters by name pattern')
+@click.option('--name', help='Filter clusters by name pattern', required=False)
 def list(type, provider, name):
+    """
+    Lists k8s clusters connected in the specified cloud provider.
+
+    :param type: the resource type to be listed
+    :param provider: the cloud provider to be used
+    :param name: the name pattern to be used for filtering (optional)
+    """
     if type == 'cluster':
         credentials_dir = 'cluster_credentials'
-        yaml_file_path = os.path.join(credentials_dir, 'cluster.yaml')
+        yaml_file_path = os.path.join(credentials_dir, 'clusters.yaml')
 
         if not os.path.exists(yaml_file_path):
-            click.echo("No cluster.yaml file found.")
+            click.echo("No clusters.yaml file found.")
             return
 
         with open(yaml_file_path, 'r') as yaml_file:
@@ -399,12 +411,20 @@ def list(type, provider, name):
 
 
 @cli.command()
-@click.argument('param_type', type=click.Choice(['cluster']))
+@click.argument('type', type=click.Choice(['cluster']))
 @click.option('--name', type=click.STRING, help='What is the cluster named as?')
 @click.option('--region', type=click.STRING, help='Where is the cluster located?')
 @click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed with destruction.')
-def destroy(param_type, name, region, yes):
-    if param_type == "cluster":
+def destroy(type, name, region, yes):
+    """
+    Destroys a resource in the specified cloud provider.
+
+    :param type: the resource type to be destroyed
+    :param name: the name of the resource to be destroyed
+    :param region: the region where the resource will be destroyed
+    :param yes: flag to automatically answer "yes" to all prompts and proceed with destruction
+    """
+    if type == "cluster":
         if name is None and region is None:
             print("Please provide both the cluster name and region.")
         elif name is None:
@@ -413,7 +433,7 @@ def destroy(param_type, name, region, yes):
             print("Please provide the cluster region.")
         else:
             # Load cluster credentials from YAML file
-            with open('cluster_credentials/cluster.yaml', 'r') as file:
+            with open('cluster_credentials/clusters.yaml', 'r') as file:
                 data = yaml.safe_load(file)
 
             # Find the matching cluster based on name and region
@@ -490,14 +510,14 @@ def destroy(param_type, name, region, yes):
                                     print("Error occurred during describe-cluster command. Please check the command and try again.")
                                     return
                         data.remove(cluster)
-                        with open('cluster_credentials/cluster.yaml', 'w') as file:
+                        with open('cluster_credentials/clusters.yaml', 'w') as file:
                             yaml.dump(data, file)
                         if yes:
                             destroy_all = 'yes'
                         else:
                             destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                         if destroy_all == 'yes':
-                            os.chdir('../AWS')
+                            os.chdir('../providers/AWS')
                             destroy_all_command = f'terraform destroy -auto-approve -var="cluster_name={aws_cluster_name}" -var="region={aws_cluster_region}"'
                             process = subprocess.Popen(destroy_all_command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=True, universal_newlines=True)
                             print("The rest of the resources are being destroyed... ")
@@ -537,14 +557,14 @@ def destroy(param_type, name, region, yes):
                                     subprocess.check_output(delete_command, stderr=subprocess.STDOUT, shell=True)
                                     print(f"The AKS cluster named {azure_cluster_name} in resource group {azure_resource_group} has been deleted successfully.")
                                     data.remove(cluster)
-                                    with open('cluster_credentials/cluster.yaml', 'w') as file:
+                                    with open('cluster_credentials/clusters.yaml', 'w') as file:
                                         yaml.dump(data, file)
                                     if yes:
                                         destroy_all = 'yes'
                                     else:
                                         destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                     if destroy_all == 'yes' or yes:
-                                        os.chdir('../Azure')
+                                        os.chdir('../providers/Azure')
                                         process = subprocess.Popen(f'terraform destroy -auto-approve -var="cluster_name={azure_cluster_name}" -var="location={azure_cluster_region}" -var="resource_group={azure_resource_group}" ', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
                                         print("The rest of the resources are being destroyed... ")
                                         exit_code = process.wait()
@@ -614,14 +634,14 @@ def destroy(param_type, name, region, yes):
                                 else:
                                     print(f"No GKE cluster named {gcp_cluster_name} found in any zone of region {gcp_cluster_region}.")
                                 data.remove(cluster)
-                                with open('cluster_credentials/cluster.yaml', 'w') as file:
+                                with open('cluster_credentials/clusters.yaml', 'w') as file:
                                     yaml.dump(data, file)
                                 if yes:
                                     destroy_all = 'yes'
                                 else:
                                     destroy_all = input("Do you want to destroy all other resources? (yes/no): ").lower()
                                 if destroy_all == 'yes':
-                                    os.chdir('../GCP')
+                                    os.chdir('../providers/GCP')
                                     process = subprocess.Popen(f'terraform destroy -auto-approve -var="project={gcp_cluster_project}"', shell=True, stdout=subprocess.PIPE, universal_newlines=True)
                                     print("The rest of the resources are being destroyed...")
                                     exit_code = process.wait()
@@ -650,13 +670,21 @@ def destroy(param_type, name, region, yes):
 @click.option('--version', type=click.STRING, help="product version", required=False)
 @click.option('--yes', '-y', is_flag=True, help='Automatically answer "yes" to all prompts and proceed.')
 def add(type, product, version, yes):
+    """
+    Adds a product in the current cluster.
+
+    :param type: the installation type of the product to be added
+    :param product: the cloud native product to be added
+    :param version: the desired version of the product to be added
+    :param yes: flag to automatically answer "yes" to all prompts and proceed
+    """
     product_cat = dict()
-    installed_type = dict()
+    installation_type = dict()
     deploymentFile = dict()
     operatorRepo = dict()
     operatorDir = dict()
     operatorImage = dict()
-    imageVersion = dict()  # TODO this shouldn't be here, use default version instead
+    imageVersion = dict()  # FIXME this shouldn't be here, use default version instead
     operatorVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
@@ -664,8 +692,8 @@ def add(type, product, version, yes):
             line = line.strip()
             if line.startswith('- product'):
                 product_cat['product'] = line.split(':')[1].strip()
-            elif line.startswith('installed_type'):
-                installed_type['installed_type'] = line.split(':')[1].strip()
+            elif line.startswith('installation_type'):
+                installation_type['installation_type'] = line.split(':')[1].strip()
             elif line.startswith('deploymentFile'):
                 deploymentFile['deploymentFile'] = line.split(':')[1].strip()
             elif line.startswith('operatorDir'):
@@ -678,14 +706,14 @@ def add(type, product, version, yes):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
             elif line.startswith('operatorVersion'):
                 operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
-    if installed_type['installed_type'] == "deployment":
+    if installation_type['installation_type'] == "deployment":
         type = 'operator'
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product)
         if yes:
             deploy.switch_operator(productName=product, autoApprove='yes')
         else:
             deploy.switch_operator(productName=product, autoApprove='no')
-    if installed_type['installed_type'] == "operator":
+    if installation_type['installation_type'] == "operator":
         type = 'deployment'
         deploy = Deploy(op_version=operatorVersion['operatorVersion'], productName=product, operatorDir=operatorDir['operatorDir'])
         if yes:
@@ -693,10 +721,10 @@ def add(type, product, version, yes):
         else:
             deploy.switch_deployment(productName=product, autoApprove='no')
     if type == 'operator' and product == 'nginx':
-        deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installed_type=type)
+        deploy = Deploy(op_version=operatorVersion['operatorVersion'], deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorImage=operatorImage['operatorImage'], operatorRepo=operatorRepo['operatorRepo'], operatorDir=operatorDir['operatorDir'], productName=product, installation_type=type)
         deploy.operator(productName=product, operatorRepo=operatorRepo['operatorRepo'])
     if type == 'deployment' and product == 'nginx':
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=operatorVersion['operatorVersion'])
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=imageVersion['imageVersion'], operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installation_type=type, op_version=operatorVersion['operatorVersion'])
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
 
@@ -705,10 +733,18 @@ def add(type, product, version, yes):
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
 @click.option('--version', type=click.STRING, default='1.4.1', help="Operator version", required=False)
 def update(type, product, version):
-    if type == 'operator' and product == 'nginx':
-        print(f'Upadating NGINX with latest version ({version})')
-        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
+    """
+    Updates a product in the current cluster.
+
+    :param type: the installation type of the product to be updated
+    :param product: the cloud native product to be updated
+    :param version: the new desired version of the product to be updated
+    """
+    if type == 'operator':
+        print(f'Upadating {product} with latest version ({version})')
+        repo_dir = f'catalog/{product}/operator'
         if not os.path.exists(repo_dir):
+            # FIXME get operator repo from catalog and use Deploy object
             subprocess.run(['git', 'clone', 'https://github.com/nginxinc/nginx-ingress-helm-operator/',
                             '--branch', f'v{version}'])
         os.chdir(repo_dir)
@@ -719,9 +755,10 @@ def update(type, product, version):
         subprocess.run(['kubectl', 'get', 'deployments', '-n', 'nginx-ingress-operator-system'])
 
         print(f'Nginx operator updated successfully with {version} version')
-    elif type == 'deployment' and product == 'nginx':
+    elif type == 'deployment':
+        # FIXME delete all of this and just use the catalog + new image version on Deploy
         product_cat = dict()
-        installed_type = dict()
+        installation_type = dict()
         deploymentFile = dict()
         operatorRepo = dict()
         operatorDir = dict()
@@ -734,8 +771,8 @@ def update(type, product, version):
                 line = line.strip()
                 if line.startswith('- product'):
                     product_cat['product'] = line.split(':')[1].strip()
-                elif line.startswith('installed_type'):
-                    installed_type['installed_type'] = line.split(':')[1].strip()
+                elif line.startswith('installation_type'):
+                    installation_type['installation_type'] = line.split(':')[1].strip()
                 elif line.startswith('deploymentFile'):
                     deploymentFile['deploymentFile'] = line.split(':')[1].strip()
                 elif line.startswith('operatorDir'):
@@ -748,10 +785,10 @@ def update(type, product, version):
                     imageVersion['imageVersion'] = line.split(': ')[1].strip()
                 elif line.startswith('installed_version'):
                     installed_version['installed_version'] = line.split(': ')[1].strip()
-        if installed_type is None and installed_version is None:
+        if installation_type is None and installed_version is None:
             print("Deployment is not installed")
         print(f"Updating the deployment to version: {version}")
-        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installed_type=type, op_version=version)
+        deploy = Deploy(deployment_type=deploymentFile['deploymentFile'], imageVersion=version, operatorDir=operatorDir['operatorDir'], operatorImage=operatorImage['operatorImage'], productName=product, installation_type=type, op_version=version)
         deploy.deployment(productName=product, operatorRepo=operatorRepo['operatorRepo'])
 
         print(f"Deployment is updated to {imageVersion['imageVersion']}")
@@ -761,48 +798,53 @@ def update(type, product, version):
 
 
 @cli.command()
-@click.option('--type', type=click.Choice(['operator', 'deployment']), help='Type of how to deploy operator')
+@click.option('--type', install_type=click.Choice(['operator', 'deployment']), help='Installation type of the product')
 @click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
-def delete(type, product):
-    product_cat = dict()
-    installed_type = dict()
-    deploymentFile = dict()
+def remove(install_type, product):
+    """
+    Deletes a product in the current cluster.
+
+    :param install_type: the installation type of the product to be deleted
+    :param product: the product to be deleted
+    """
+    installation_type = dict()
     operatorRepo = dict()
-    operatorDir = dict()
+    operatorVersion = dict()
     operatorImage = dict()
+    operatorDir = dict()
+    deploymentFile = dict()
     imageVersion = dict()
     with open("catalog/catalog.yaml", 'r') as f:
         lines = f.readlines()
         for line in lines:
             line = line.strip()
-            if line.startswith('- product'):
-                product_cat['product'] = line.split(':')[1].strip()
-            elif line.startswith('installed_type'):
-                installed_type['installed_type'] = line.split(':')[1].strip()
-            elif line.startswith('deploymentFile'):
-                deploymentFile['deploymentFile'] = line.split(':')[1].strip()
-            elif line.startswith('operatorDir'):
-                operatorDir['operatorDir'] = line.split(':')[1].strip()
+            if line.startswith('installation_type'):
+                installation_type['installation_type'] = line.split(':')[1].strip()
             elif line.startswith('operatorRepo'):
                 operatorRepo['operatorRepo'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorVersion'):
+                operatorVersion['operatorVersion'] = line.split(': ')[1].strip()
             elif line.startswith('operatorImage'):
                 operatorImage['operatorImage'] = line.split(': ')[1].strip()
+            elif line.startswith('operatorDir'):
+                operatorDir['operatorDir'] = line.split(':')[1].strip()
+            elif line.startswith('deploymentFile'):
+                deploymentFile['deploymentFile'] = line.split(':')[1].strip()
             elif line.startswith('imageVersion'):
                 imageVersion['imageVersion'] = line.split(': ')[1].strip()
-    if type == 'operator' and product == 'nginx':
-        print(f'Deleting NGINX with {imageVersion["imageVersion"]} version')
-        repo_dir = 'catalog/nginx/nginx-ingress-helm-operator'
-        os.chdir(repo_dir)
+    if install_type == 'operator':
+        print(f'Deleting {product} with {imageVersion["imageVersion"]} version')
+        os.chdir(operatorDir['operatorDir'])
         # Delete the deployed operator
         subprocess.run(['make', 'undeploy'])
         data = [
             {
-                'product': 'nginx',
+                'product': f'{product}',
                 'default_version': 'latest',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
                 'installed_version': '',
-                'installed_type': '',
+                'installation_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
                 'operatorVersion': '1.5.0',
                 'operatorImage': operatorImage['operatorImage'],
@@ -811,7 +853,7 @@ def delete(type, product):
                 'imageVersion': imageVersion['imageVersion']
             },
         ]
-        with open('../../catalog.yaml', 'w') as file:
+        with open('catalog/catalog.yaml', 'w') as file:
             for item in data:
                 file.write("- product: {}\n".format(item['product']))
                 file.write("  default_version: {}\n".format(item['default_version']))
@@ -820,36 +862,36 @@ def delete(type, product):
                 for available_type in item['available_types']:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n".format(item['installed_type']))
+                file.write("  installation_type: {}\n".format(item['installation_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
                 file.write("  operatorDir: {}\n".format(item['operatorDir']))
                 file.write("  deploymentFile: {}\n".format(item['deploymentFile']))
                 file.write("  imageVersion: {}\n\n".format(item['imageVersion']))
-        print(f'Nginx operator deleted successfully with {imageVersion["imageVersion"]} version')
-    elif type == 'deployment' and product == 'nginx':
-        print("Deleting nginx deployment with latest image version")
-        deploy_repo = "catalog/nginx/nginx_deployment"
-        os.chdir(deploy_repo)
-        subprocess.run(['kubectl', 'delete', '-f', 'deployment.yaml'])
+        print(f'{product} operator deleted successfully with {imageVersion["imageVersion"]} version')
+    elif install_type == 'deployment':
+        deploy_file = deploymentFile['deploymentFile']
+        deploy_version = imageVersion['imageVersion']
+        print(f"Deleting {product} deployment with {deploy_version} image version")
+        subprocess.run(['kubectl', 'delete', '-f', f'{deploy_file}'])
         data = [
             {
-                'product': 'nginx',
-                'default_version': 'latest',
+                'product': f'{product}',
+                'default_version': f'{imageVersion}',
                 'default_type': 'deployment',
                 'available_types': ['deployment', 'operator'],
                 'installed_version': '',
-                'installed_type': '',
+                'installation_type': '',
                 'operatorRepo': operatorRepo['operatorRepo'],
-                'operatorVersion': '1.5.0',
+                'operatorVersion': operatorVersion['operatorVersion'],
                 'operatorImage': operatorImage['operatorImage'],
                 'operatorDir': operatorDir['operatorDir'],
                 'deploymentFile': deploymentFile['deploymentFile'],
                 'imageVersion': imageVersion['imageVersion']
             },
         ]
-        with open('../../catalog.yaml', 'w') as file:
+        with open('catalog/catalog.yaml', 'w') as file:
             for item in data:
                 file.write("- product: {}\n".format(item['product']))
                 file.write("  default_version: {}\n".format(item['default_version']))
@@ -858,7 +900,7 @@ def delete(type, product):
                 for available_type in item['available_types']:
                     file.write("    - {}\n".format(available_type))
                 file.write("  installed_version: {}\n".format(item['installed_version']))
-                file.write("  installed_type: {}\n".format(item['installed_type']))
+                file.write("  installation_type: {}\n".format(item['installation_type']))
                 file.write("  operatorRepo: {}\n".format(item['operatorRepo']))
                 file.write("  operatorVersion: {}\n".format(item['operatorVersion']))
                 file.write("  operatorImage: {}\n".format(item['operatorImage']))
@@ -877,6 +919,17 @@ def delete(type, product):
 @click.option('--resource-group', '-rg', type=click.STRING, default=None, help='Resource group of the cluster (Azure)')
 @click.option('--project', '-p', type=click.STRING, default=None, help='GCP project of the cluster (GCP)')
 def use(type, cluster, provider, region, resource_group, project):
+    """
+    Select a cluster to switch to.
+
+    :param type: the type of resource to switch to
+    :param cluster: the name of the cluster to switch to
+    :param provider: the cloud provider of the cluster
+    :param region: the region of the cluster (AWS and GCP)
+    :param resource_group: the resource group of the cluster (Azure)
+    :param project: the GCP project of the cluster (GCP)
+    """
+    # FIXME it has just to read the clusters.yaml once they connect the first time it is referred by a unique name
     if type != 'cluster':
         print("Invalid argument type. Please provide 'cluster' as the argument type.")
         return
@@ -909,7 +962,7 @@ def use(type, cluster, provider, region, resource_group, project):
     cluster_dir = 'cluster_credentials'
     os.makedirs(cluster_dir, exist_ok=True)
 
-    cluster_file = os.path.join(cluster_dir, 'cluster.yaml')
+    cluster_file = os.path.join(cluster_dir, 'clusters.yaml')
 
     if os.path.exists(cluster_file):
         with open(cluster_file, 'r') as file:
@@ -918,7 +971,7 @@ def use(type, cluster, provider, region, resource_group, project):
                 if not data:
                     data = []
             except yaml.YAMLError as e:
-                print("Error loading cluster.yaml:", str(e))
+                print("Error loading clusters.yaml:", str(e))
                 return
     else:
         data = []
@@ -929,7 +982,7 @@ def use(type, cluster, provider, region, resource_group, project):
         # Cluster not managed, add it to data list
         if provider == 'AWS':
             cluster_info = {
-                'cluster_credentials': "credentials/aws_kube_credential",
+                'cluster_credentials': "cluster_credentials/aws_kube_credentials",
                 'cluster_name': f"{cluster}",
                 'cluster_provider': provider.upper(),
                 'cluster_region': f"{region}",
@@ -937,7 +990,7 @@ def use(type, cluster, provider, region, resource_group, project):
             }
         elif provider == 'Azure':
             cluster_info = {
-                'cluster_credentials': "credentials/azure_kube_credential",
+                'cluster_credentials': "cluster_credentials/azure_kube_credentials",
                 'cluster_name': f"{cluster}",
                 'cluster_provider': provider.upper(),
                 'cluster_resource_group': f"{resource_group}",
@@ -945,7 +998,7 @@ def use(type, cluster, provider, region, resource_group, project):
             }
         elif provider == 'GCP':
             cluster_info = {
-                'cluster_credentials': "credentials/gcp_kube_credential",
+                'cluster_credentials': "cluster_credentials/gcp_kube_credentials",
                 'cluster_name': f"{cluster}",
                 'cluster_provider': provider.upper(),
                 'cluster_project': f"{project}",
@@ -973,20 +1026,23 @@ def use(type, cluster, provider, region, resource_group, project):
     update_kubeconfig_process = subprocess.run(update_kubeconfig_cmd)
 
     if update_kubeconfig_process.returncode != 0:
-        print(f"Failed to connect to the {provider.upper()} cluster. The cluster.yaml file will not be modified.")
+        print(f"Failed to connect to the {provider.upper()} cluster. The clusters.yaml file will not be modified.")
         return
 
     with open(cluster_file, 'w') as file:
         try:
             yaml.safe_dump(data, file)
         except yaml.YAMLError as e:
-            print("Error saving cluster.yaml:", str(e))
+            print("Error saving clusters.yaml:", str(e))
             return
 
 
 @cli.command()
 def info():
-    print("Information about your cluster come from cnquery lib - thanks mondoo")
+    """
+    Query your cluster for information via an interactive shell from Mondoo.
+    """
+    print("Information about your cluster come from cnquery lib - thanks Mondoo")
     subprocess.run(['cnquery', 'shell', 'k8s'])
 
 

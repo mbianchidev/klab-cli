@@ -1,0 +1,12 @@
+- cli_name: aws
+  provider_name: AWS
+  check_command: aws --version
+  credential_file_default_location: ~/.aws/credentials
+- cli_name: az
+  check_command: az account show
+  provider_name: Azure
+  credential_file_default_location: ~/.azure/azureProfile.json
+- cli_name: gcloud
+  check_command: gcloud version
+  provider_name: GoogleCloud
+  credential_file_default_location: ~/.config/gcloud/application_default_credentials.json

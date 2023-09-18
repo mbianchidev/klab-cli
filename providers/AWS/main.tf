@@ -1,5 +1,5 @@
 provider "aws" {
-  shared_credentials_files = ["../kubelab-cli/credentials/aws_kube_credential"]
+  shared_credentials_files = ["../klab-cli/credentials/aws_kube_credential"]
   region                   = var.region
 }
 
@@ -55,5 +55,5 @@ variable "cluster_name" {
 # }
 
 # output "cluster_region" {
-#   value = file("../kubelab-cli/credentials/aws_kube_config")
+#   value = file("../klab-cli/credentials/aws_kube_config")
 # }

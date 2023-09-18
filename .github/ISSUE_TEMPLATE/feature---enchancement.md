@@ -1,6 +1,6 @@
 ---
 name: Feature / Enchancement
-about: Suggest a feature or improvement for kubelab-cli
+about: Suggest a feature or improvement for klab-cli
 title: "[Feature]"
 labels: enhancement
 assignees: mbianchidev

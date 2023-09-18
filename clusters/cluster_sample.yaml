@@ -1,0 +1,15 @@
+name: sample
+provider: aws
+region: us-east-1
+credential_file: ~/.aws/credentials
+products:
+  - name: nginx
+    type: operator
+    version: 1.0.0
+    replicas: 2
+    port: 80
+  - name: istio
+    type: deployment
+    version: 1.15.0
+    replicas: 1
+    port: 443

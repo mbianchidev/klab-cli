@@ -143,7 +143,7 @@ class TestAzureNginx:
         except requests.exceptions.RequestException as e:
             assert False, f"Error making request to NGINX: {e}"
         time.sleep(10)
-    
+
     def test_azure_delete_deployment(self):
         print("Running test for delete the nginx deployment in Azure")
         os.chdir(os.path.join(os.path.dirname(__file__), '..'))
