@@ -596,7 +596,7 @@ def search_products(cluster_name: str, product=None) -> list:
         return None
 
 @cli.command()
-@click.argument('product', type=click.Choice(['nginx', 'istio', 'karpenter']))
+@click.argument('product', type=click.Choice(['nginx', 'istio']))
 @click.option('--cluster', '-c', required=True, help='Name of the cluster to be used', metavar='<resource_name>')
 @click.option('--type', type=click.Choice(['operator', 'deployment']), required=False, default="deployment", help='Type of how to deploy operator')
 @click.option('--version', type=click.STRING, help="product version", required=False)
