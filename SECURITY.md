@@ -8,4 +8,4 @@
 
 ## Reporting a Vulnerability
 
-If you find a vulnerability please contact us at: dev@kubelab.cloud
+If you find a vulnerability please contact us at: info@mb-consulting.dev
