@@ -162,7 +162,7 @@ klab-cli is open-source software licensed under the [MIT License](LICENSE). Feel
 
 ---
 
-Thank you for using klab-cli! If you have any questions or need further assistance, please refer to the documentation or reach out to maintainers for support.
+Thank you for using klab-cli! If you have any questions or need further assistance, please refer to the documentation or reach out to [maintainers](docs/CONTRIBUTING.md##Maintainers) for support.
 
 ## Other OSS tools embedded or used in klab-cli
 - https://github.com/mondoohq/cnquery
