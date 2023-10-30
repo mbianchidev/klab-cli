@@ -2,6 +2,7 @@ name: KLab CLI CI/CD
 
 on:
   push:
+    branches: [ "main" ] # this will be commented
     tags:        
       - v*
   pull_request:
