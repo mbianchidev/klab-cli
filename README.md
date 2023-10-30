@@ -1,6 +1,6 @@
 # Klab-cli - Kubernetes utility CLI
 
-TODO: find a cool image to use here
+![Homer Simpson taking an escalator to Paradise but actually falling into Platform Engineering hell](/docs/images/platform-engineering.gif)
 
 Klab-cli is a command line tool, built in python, that empowers developers to effortlessly create, manage, and destroy Kubernetes clusters on popular cloud providers such as AWS, Azure, and GCP, obtaining Terraform code and easy yaml configs in return.
 
@@ -35,7 +35,7 @@ Or you can use the klab-cli install script to install all the dependencies for y
 Run the following command to install the dependencies and the cli itself:
 
 ```bash
-curl -s https://raw.githubusercontent.com/kubelab-middleware/install.sh | bash
+curl -s https://raw.githubusercontent.com/mbianchidev/klab-cli/main/install.sh | bash
 ```
 
 ## Prerequisites (contribution only)
