@@ -20,4 +20,4 @@ build==1.2.1
 wheel==0.42.0
 twine==4.0.2
 keyring==24.2.0
-configparser==6.0.0
+configparser==7.0.0
