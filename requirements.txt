@@ -19,5 +19,5 @@ pytest==8.3.2
 build==1.2.1
 wheel==0.42.0
 twine==4.0.2
-keyring==24.2.0
+keyring==25.3.0
 configparser==7.0.0
