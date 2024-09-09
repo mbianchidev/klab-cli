@@ -8,7 +8,7 @@ PyYAML==6.0.2
 s3transfer==0.10.2
 six==1.16.0
 urllib3==2.2.2
-setuptools==74.0.0
+setuptools==74.1.2
 flake8==7.1.1 
 mccabe==0.7.0 
 pycodestyle==2.12.1 
