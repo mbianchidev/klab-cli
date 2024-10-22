@@ -2,11 +2,11 @@ name: KLab CLI CI/CD
 
 on:
   push:
-    branches: [ "main" ] # this will be commented
+    branches: [ "main" ]
     tags:        
       - v*
   pull_request:
-    branches: [ "main" ] # this will be commented
+    branches: [ "main" ]
 
 permissions:
   contents: write
