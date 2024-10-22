@@ -1,0 +1,15 @@
+name: Demo pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  demo-job:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check Nodejs and NPM version
+      run: |
+        node --version && npm --version
