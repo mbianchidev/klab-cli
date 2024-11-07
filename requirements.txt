@@ -2,7 +2,7 @@ boto3==1.35.34
 botocore==1.35.34
 click==8.1.7
 jmespath==1.0.1
-MarkupSafe==2.1.5
+MarkupSafe==3.0.2
 python-dateutil==2.9.0.post0
 PyYAML==6.0.2
 s3transfer==0.10.2
