@@ -1,9 +1,7 @@
 # Klab-cli - Kubernetes utility CLI
 
 [![build](https://github.com/mbianchidev/klab-cli/actions/workflows/klab-cli.yml/badge.svg)](https://github.com/mbianchidev/klab-cli/actions/workflows/klab-cli.yml)
-[![CodeQL](https://github.com/mbianchidev/klab-cli/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/mbianchidev/klab-cli/actions/workflows/codeql-analysis.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/mbianchidev/klab-cli)](https://scorecard.dev/viewer/?uri=github.com/mbianchidev/klab-cli)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/xxxx/badge)](https://www.bestpractices.dev/projects/xxxx)
 
 
 ![Homer Simpson taking an escalator to Paradise but actually falling into Platform Engineering hell](/docs/images/platform-engineering.gif)
