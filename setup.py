@@ -25,7 +25,6 @@ setup(
         'MarkupSafe',
         'python-dateuti',
         'PyYA',
-        's3transfer',
         'six',
         'urllib3',
         'build',
